@@ -1,4 +1,4 @@
-import { readFile, mkdtemp } from 'node:fs/promises'
+import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
@@ -27,6 +27,14 @@ describe('run_command', () => {
     const out = await execTool.execute({ command: 'node -e "setTimeout(()=>{}, 10000)"', timeout_ms: 300 }, ctx)
     expect(out).toMatch(/timed out/i)
   }, 5000)
+  it('truncates output over cap with marker', async () => {
+    const out = await execTool.execute(
+      { command: `node -e "process.stdout.write('x'.repeat(40000))"` },
+      ctx,
+    )
+    expect(out).toContain('[truncated]')
+    expect(out.length).toBeLessThanOrEqual(30_000 + '\n...[truncated]'.length + '\n[exit code: 0]'.length)
+  })
   it('requires approval', async () => {
     const c2: ToolContext = { ...ctx, approve: async () => false }
     expect(await execTool.execute({ command: 'echo hi' }, c2)).toMatch(/denied/i)

@@ -17,7 +17,11 @@ export const execTool: ToolDefinition = {
       const child = spawn(String(args.command), { shell: true, cwd: ctx.workspaceRoot })
       let out = ''
       const push = (chunk: Buffer | string) => {
-        if (out.length < MAX_OUTPUT) out += chunk.toString()
+        if (out.length >= MAX_OUTPUT) return
+        out += chunk.toString()
+        if (out.length > MAX_OUTPUT) {
+          out = out.slice(0, MAX_OUTPUT) + '\n...[truncated]'
+        }
       }
       child.stdout.on('data', push)
       child.stderr.on('data', push)
@@ -25,6 +29,10 @@ export const execTool: ToolDefinition = {
         child.kill('SIGKILL')
         resolveOut(`error: command timed out after ${Number(args.timeout_ms ?? 60_000)} ms\n${out}`)
       }, Number(args.timeout_ms ?? 60_000))
+      child.on('error', (e) => {
+        clearTimeout(timeout)
+        resolveOut(`error: ${e.message}`)
+      })
       child.on('close', (code) => {
         clearTimeout(timeout)
         resolveOut(`${out}\n[exit code: ${code ?? 'null'}]`)

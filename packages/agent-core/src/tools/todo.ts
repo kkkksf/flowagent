@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import type { ToolDefinition } from '../types.js'
 
 const todoPath = (root: string) => join(root, '.flowagent', 'todo.md')
@@ -15,9 +15,14 @@ export const todoTool: ToolDefinition = {
   async execute(args, ctx) {
     const path = todoPath(ctx.workspaceRoot)
     if (args.action === 'read') {
-      try { return await readFile(path, 'utf8') } catch { return '(no todo list yet)' }
+      try {
+        return await readFile(path, 'utf8')
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === 'ENOENT') return '(no todo list yet)'
+        return `error: failed to read todo list: ${(e as Error).message}`
+      }
     }
-    await mkdir(join(path, '..'), { recursive: true })
+    await mkdir(dirname(path), { recursive: true })
     await writeFile(path, String(args.content ?? ''), 'utf8')
     return 'ok: todo list saved'
   },
