@@ -35,7 +35,7 @@ export type AgentEvent =
   | { type: 'tool-result'; call: ToolCall; result: string }
   | { type: 'step'; step: number }
   | { type: 'done'; reason: 'completed' | 'step-cap' | 'stopped' }
-  | { type: 'error'; error: Error }
+  | { type: 'error'; message: string } // message 为纯字符串：事件需可 JSON 序列化（跨 IPC/日志），不携带 Error 实例
 
 export interface AgentConfig {
   provider: LlmProvider

@@ -51,7 +51,7 @@ export class Agent {
           }
         }
       } catch (e) {
-        yield { type: 'error', error: e instanceof Error ? e : new Error(String(e)) }
+        yield { type: 'error', message: e instanceof Error ? e.message : String(e) }
         return
       }
       if (!gotResult) break // 流结束但没有 result：异常终止，按 step-cap 收场

@@ -66,7 +66,7 @@ export async function main(): Promise<void> {
         if (ev.type === 'message-delta') process.stdout.write(ev.text)
         else if (ev.type === 'tool-call') process.stdout.write(`\n[tool] ${ev.call.name} ${ev.call.arguments.slice(0, 80)}`)
         else if (ev.type === 'tool-result') process.stdout.write(` -> ${ev.result.slice(0, 100)}\n`)
-        else if (ev.type === 'error') console.error(`error: ${ev.error.message}`)
+        else if (ev.type === 'error') console.error(`error: ${ev.message}`)
         else if (ev.type === 'assistant-message') process.stdout.write('\n')
       }
     } catch (e) { console.error(`fatal: ${(e as Error).message}`) }

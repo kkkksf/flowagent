@@ -70,7 +70,7 @@ describe('Agent loop', () => {
     const p = fakeProvider([], { turn: 0, duringDelta: true })
     const agent = makeAgent(p)
     const events = await collect(agent.run('hi'))
-    expect(events.at(-1)).toMatchObject({ type: 'error' })
+    expect(events.at(-1)).toMatchObject({ type: 'error', message: expect.stringMatching(/connection reset/) })
     expect(agent.history.filter((m) => m.role === 'assistant')).toHaveLength(0)
     expect(agent.history.at(-1)).toMatchObject({ role: 'user', content: 'hi' })
   })

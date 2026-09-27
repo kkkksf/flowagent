@@ -27,16 +27,29 @@ export class TokenBudgetTrim implements ContextStrategy {
         w.tokens = estTokens(w.msg)
       }
     }
-    // 2) 丢弃最老的消息，保持 assistant/tool 配对
+    // 2) 丢弃最老的消息，保持 assistant/tool 配对（传递闭包）：
+    //    - 丢弃 assistant 时，其所有 toolCalls 对应的 tool 消息一并丢弃（否则孤儿 tool 结果会被
+    //      OpenAI 兼容 API 以 400 拒绝）；反之丢弃 tool 时也拉入其 assistant。
+    //    - 新加入集合的 assistant/tool 再按同样规则扩张，直至闭包稳定。
     while (total() > this.cfg.tokenBudget && work.length > KEEP_TAIL) {
-      const drop = new Set([work[0].msg])
-      if (work[0].msg.role === 'assistant' && work[0].msg.toolCalls?.length) {
-        const ids = new Set(work[0].msg.toolCalls.map((c) => c.id))
-        for (const w of work) if (w.msg.role === 'tool' && ids.has(w.msg.toolCallId)) drop.add(w.msg)
-      }
-      if (work[0].msg.role === 'tool') {
-        const id = work[0].msg.toolCallId
-        for (const w of work) if (w.msg.role === 'assistant' && w.msg.toolCalls?.some((c) => c.id === id)) drop.add(w.msg)
+      const drop = new Set<AgentMessage>([work[0].msg])
+      let grew = true
+      while (grew) {
+        grew = false
+        const droppedToolIds = new Set<string>()
+        const droppedCallIds = new Set<string>()
+        for (const d of drop) {
+          if (d.role === 'tool') droppedToolIds.add(d.toolCallId)
+          if (d.role === 'assistant') for (const c of d.toolCalls) droppedCallIds.add(c.id)
+        }
+        for (const w of work) {
+          if (drop.has(w.msg)) continue
+          if (w.msg.role === 'assistant' && w.msg.toolCalls?.some((c) => droppedToolIds.has(c.id))) {
+            drop.add(w.msg); grew = true
+          } else if (w.msg.role === 'tool' && droppedCallIds.has(w.msg.toolCallId)) {
+            drop.add(w.msg); grew = true
+          }
+        }
       }
       work = work.filter((w) => !drop.has(w.msg))
     }
