@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
+  "bin": { "flowagent": "dist/cli.js" },
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "cli": "node dist/cli.js"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
