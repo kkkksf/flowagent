@@ -10,9 +10,11 @@ type ParsedCall = { id: string; name: string; arguments: string }
 export class OpenAICompatProvider implements LlmProvider {
   private maxRetries: number
   private fetchImpl: typeof fetch
-  constructor(private cfg: { baseURL: string; apiKey: string; model: string; maxRetries?: number; fetchImpl?: typeof fetch }) {
+  private backoffMs: number
+  constructor(private cfg: { baseURL: string; apiKey: string; model: string; maxRetries?: number; backoffMs?: number; fetchImpl?: typeof fetch }) {
     this.maxRetries = cfg.maxRetries ?? 3
     this.fetchImpl = cfg.fetchImpl ?? fetch
+    this.backoffMs = cfg.backoffMs ?? 1000
   }
 
   async *stream(messages: AgentMessage[], tools: ToolDefinition[]): AsyncGenerator<ProviderEvent> {
@@ -24,15 +26,23 @@ export class OpenAICompatProvider implements LlmProvider {
     }
     let res: Response | null = null
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-      res = await this.fetchImpl(`${this.cfg.baseURL.replace(/\/$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${this.cfg.apiKey}` },
-        body: JSON.stringify(body),
-      })
+      let resAttempt: Response
+      try {
+        resAttempt = await this.fetchImpl(`${this.cfg.baseURL.replace(/\/$/, '')}/chat/completions`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${this.cfg.apiKey}` },
+          body: JSON.stringify(body),
+        })
+      } catch (err) {
+        if (attempt === this.maxRetries) throw new Error(`LLM API network error: ${String(err)}`)
+        await new Promise((r) => setTimeout(r, this.backoffMs * 2 ** attempt))
+        continue
+      }
+      res = resAttempt
       if (res.ok) break
       const retriable = res.status === 429 || res.status >= 500
       if (!retriable || attempt === this.maxRetries) throw new Error(`LLM API error ${res.status}: ${await res.text().catch(() => '')}`)
-      await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt))
+      await new Promise((r) => setTimeout(r, this.backoffMs * 2 ** attempt))
     }
     if (!res || !res.ok || !res.body) throw new Error('LLM API: no response body')
 

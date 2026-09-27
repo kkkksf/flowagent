@@ -26,6 +26,26 @@ describe('parseSse', () => {
     for await (const e of parseSse(stream)) events.push(e)
     expect(events).toEqual(['{"a":1}', '[DONE]'])
   })
+
+  it('flushes a trailing data line without newline', async () => {
+    const events: string[] = []
+    const enc = new TextEncoder()
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) { c.enqueue(enc.encode('data: {"a":1}\n\ndata: [DONE]')); c.close() },
+    })
+    for await (const e of parseSse(stream)) events.push(e)
+    expect(events).toEqual(['{"a":1}', '[DONE]'])
+  })
+
+  it('accepts data: without a space', async () => {
+    const events: string[] = []
+    const enc = new TextEncoder()
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) { c.enqueue(enc.encode('data:[DONE]\n')); c.close() },
+    })
+    for await (const e of parseSse(stream)) events.push(e)
+    expect(events).toEqual(['[DONE]'])
+  })
 })
 
 describe('OpenAICompatProvider.stream', () => {
@@ -56,6 +76,30 @@ describe('OpenAICompatProvider.stream', () => {
     for await (const e of p.stream([{ role: 'user', content: 'hi' }], [])) events.push(e)
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(events.some((e) => e.type === 'result')).toBe(true)
+  })
+
+  it('retries on network error then succeeds', async () => {
+    const { OpenAICompatProvider } = await import('./openai.js')
+    const ok = sseResponse(['data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\n', 'data: [DONE]\n\n'])
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockResolvedValueOnce(ok)
+    const p = new OpenAICompatProvider({ baseURL: 'http://x', apiKey: 'k', model: 'm', maxRetries: 3, backoffMs: 1, fetchImpl: fetchMock as unknown as typeof fetch })
+    const events = []
+    for await (const e of p.stream([{ role: 'user', content: 'hi' }], [])) events.push(e)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(events.some((e) => e.type === 'result')).toBe(true)
+  })
+
+  it('throws network error after exhausting retries', async () => {
+    const { OpenAICompatProvider } = await import('./openai.js')
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('fetch failed'))
+    const p = new OpenAICompatProvider({ baseURL: 'http://x', apiKey: 'k', model: 'm', maxRetries: 2, backoffMs: 1, fetchImpl: fetchMock as unknown as typeof fetch })
+    await expect(async () => {
+      for await (const _e of p.stream([{ role: 'user', content: 'hi' }], [])) { /* drain */ }
+    }).rejects.toThrow(/network error/)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it('assembles tool_calls from deltas', async () => {
