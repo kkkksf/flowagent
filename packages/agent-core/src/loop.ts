@@ -15,11 +15,17 @@ export class Agent {
 
   get tools(): string[] { return this.registry.list().map((t) => t.name) }
 
-  loadHistory(messages: AgentMessage[]): void { this._history = [...messages] }
+  loadHistory(messages: AgentMessage[]): void {
+    // 保证历史以 system 消息开头：外部提供的历史若缺少，则补构造时的 systemPrompt
+    this._history = messages[0]?.role === 'system'
+      ? [...messages]
+      : [{ role: 'system', content: this.cfg.systemPrompt }, ...messages]
+  }
 
   stop(): void { this.stopped = true }
 
   async *run(userInput: string): AsyncGenerator<AgentEvent> {
+    this.stopped = false // 每次 run 重置：REPL 中同一实例多次 run，stop 不应跨调用粘滞
     const userMsg: AgentMessage = { role: 'user', content: userInput }
     this._history.push(userMsg)
     this.cfg.session.append({ kind: 'message', message: userMsg })
@@ -45,7 +51,7 @@ export class Agent {
           }
         }
       } catch (e) {
-        yield { type: 'error', error: e as Error }
+        yield { type: 'error', error: e instanceof Error ? e : new Error(String(e)) }
         return
       }
       if (!gotResult) break // 流结束但没有 result：异常终止，按 step-cap 收场

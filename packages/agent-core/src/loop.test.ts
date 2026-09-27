@@ -96,6 +96,37 @@ describe('Agent loop', () => {
     expect(events.some((e) => e.type === 'message-delta')).toBe(false)
   })
 
+  it('run() resets the stop flag so a later run on the same agent works', async () => {
+    const p = fakeProvider([
+      [{ type: 'result', content: '', toolCalls: [{ id: 'c1', name: 'echo', arguments: '{}' }] }],
+      [{ type: 'result', content: 'second run done', toolCalls: [] }],
+    ])
+    const agent = makeAgent(p)
+    const first: AgentEvent[] = []
+    for await (const e of agent.run('go')) {
+      first.push(e)
+      if (e.type === 'tool-result') agent.stop()
+    }
+    expect(first.at(-1)).toMatchObject({ type: 'done', reason: 'stopped' })
+    const second = await collect(agent.run('again'))
+    expect(second.some((e) => e.type === 'assistant-message' || e.type === 'message-delta')).toBe(true)
+    expect(second.at(-1)).toMatchObject({ type: 'done', reason: 'completed' })
+  })
+
+  it('loadHistory keeps a provided leading system message', () => {
+    const agent = makeAgent(fakeProvider([]))
+    agent.loadHistory([{ role: 'system', content: 'custom' }, { role: 'user', content: 'u' }])
+    expect(agent.history[0]).toMatchObject({ role: 'system', content: 'custom' })
+    expect(agent.history).toHaveLength(2)
+  })
+
+  it('loadHistory prepends the constructor system message when missing', () => {
+    const agent = makeAgent(fakeProvider([]))
+    agent.loadHistory([{ role: 'user', content: 'u' }, { role: 'assistant', content: 'a', toolCalls: [] }])
+    expect(agent.history[0]).toMatchObject({ role: 'system', content: 'sys' })
+    expect(agent.history).toHaveLength(3)
+  })
+
   it('streams message deltas', async () => {
     const p = fakeProvider([[{ type: 'text-delta', text: 'He' }, { type: 'text-delta', text: 'y' }, { type: 'result', content: 'Hey', toolCalls: [] }]])
     const events = await collect(makeAgent(p).run('hi'))
