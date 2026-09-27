@@ -44,6 +44,9 @@ export interface AgentConfig {
   maxSteps: number // 默认 30
   contextStrategy: ContextStrategy
   session: SessionStore // 可为 NullSessionStore
+  workspaceRoot?: string
+  autoApprove?: boolean
+  approve?: (action: string, detail: string) => Promise<boolean>
 }
 
 // 占位：ContextStrategy、SessionStore 在 Task 6/7 填充方法
