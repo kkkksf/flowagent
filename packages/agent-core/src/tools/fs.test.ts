@@ -66,4 +66,26 @@ describe('file tools', () => {
     const out = await get('grep').execute({ pattern: 'TWO', include: '*.txt' }, ctx)
     expect(out).toMatch(/u\.txt.*1/i)
   })
+
+  it('edit writes new_string containing $& literally', async () => {
+    await get('write_file').execute({ path: 'dollar.txt', content: 'one two three' }, ctx)
+    const out = await get('edit_file').execute({ path: 'dollar.txt', old_string: 'two', new_string: '[$&]' }, ctx)
+    expect(out).toMatch(/ok/i)
+    expect(await get('read_file').execute({ path: 'dollar.txt' }, ctx)).toBe('one [$&] three')
+  })
+
+  it('grep with invalid regex returns error text, does not throw', async () => {
+    const out = await get('grep').execute({ pattern: '(', include: '*.txt' }, ctx)
+    expect(out).toMatch(/error/i)
+  })
+
+  it('read_file accepts a file named ..config', async () => {
+    await writeFile(join(root, '..config'), 'cfg')
+    expect(await get('read_file').execute({ path: '..config' }, ctx)).toBe('cfg')
+  })
+
+  it('glob ? matches a single character', async () => {
+    const out = await get('glob').execute({ pattern: 'hell?.txt' }, ctx)
+    expect(out).toContain('hello.txt')
+  })
 })

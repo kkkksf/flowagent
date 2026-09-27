@@ -1,11 +1,11 @@
 import { readFile, readdir, writeFile, mkdir, stat } from 'node:fs/promises'
-import { isAbsolute, join, relative, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { ToolDefinition } from '../types.js'
 
 export function resolveInWorkspace(root: string, relativePath: string): string {
   const abs = isAbsolute(relativePath) ? resolve(relativePath) : resolve(root, relativePath)
   const rel = relative(resolve(root), abs)
-  if (rel.startsWith('..') || isAbsolute(rel)) throw new Error(`error: path "${relativePath}" is outside the workspace`)
+  if (rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) throw new Error(`error: path "${relativePath}" is outside the workspace`)
   return abs
 }
 
@@ -67,7 +67,7 @@ export const fsTools: ToolDefinition[] = [
         }
         const updated = args.replace_all === true
           ? content.split(oldStr).join(String(args.new_string))
-          : content.replace(oldStr, String(args.new_string))
+          : content.replace(oldStr, () => String(args.new_string))
         await writeFile(abs, updated, 'utf8')
         return `ok: edited ${String(args.path)} (${count} replacement${count > 1 ? 's' : ''})`
       })
@@ -92,7 +92,8 @@ export const fsTools: ToolDefinition[] = [
       // 极简递归匹配：把 glob 转 RegExp（** -> 任意路径段序列，* -> 段内任意）
       const pattern = String(args.pattern)
       const re = new RegExp('^' + pattern
-        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/[.+^${}()|[\]\\?]/g, '\\$&')
+        .replace(/\\\?/g, '.')
         .replace(/\*\*\//g, '(?:.*/)?')
         .replace(/\*\*/g, '.*')
         .replace(/\*/g, '[^/\\\\]*') + '$')
@@ -118,23 +119,26 @@ export const fsTools: ToolDefinition[] = [
       required: ['pattern'],
     },
     async execute(args, ctx) {
-      const re = new RegExp(String(args.pattern))
       const include = args.include ? String(args.include) : '*'
-      const incRe = new RegExp('^' + include.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$')
       const out: string[] = []
-      const walk = async (dir: string, prefix: string): Promise<void> => {
-        for (const e of await readdir(dir, { withFileTypes: true })) {
-          if (e.name === 'node_modules' || e.name === '.git') continue
-          const rel = prefix ? `${prefix}/${e.name}` : e.name
-          if (e.isDirectory()) { await walk(join(dir, e.name), rel); continue }
-          if (!incRe.test(e.name)) continue
-          const s = await stat(join(dir, e.name))
-          if (!s.isFile() || s.size > 1_000_000) continue
-          const text = await readFile(join(dir, e.name), 'utf8')
-          text.split('\n').forEach((line, i) => { if (re.test(line)) out.push(`${rel}:${i + 1}: ${line.trim().slice(0, 200)}`) })
+      return safeIo(async () => {
+        const re = new RegExp(String(args.pattern))
+        const incRe = new RegExp('^' + include.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$')
+        const walk = async (dir: string, prefix: string): Promise<void> => {
+          for (const e of await readdir(dir, { withFileTypes: true })) {
+            if (e.name === 'node_modules' || e.name === '.git') continue
+            const rel = prefix ? `${prefix}/${e.name}` : e.name
+            if (e.isDirectory()) { await walk(join(dir, e.name), rel); continue }
+            if (!incRe.test(e.name)) continue
+            const s = await stat(join(dir, e.name))
+            if (!s.isFile() || s.size > 1_000_000) continue
+            const text = await readFile(join(dir, e.name), 'utf8')
+            text.split('\n').forEach((line, i) => { if (re.test(line)) out.push(`${rel}:${i + 1}: ${line.trim().slice(0, 200)}`) })
+          }
         }
-      }
-      return safeIo(async () => { await walk(ctx.workspaceRoot, ''); return out.slice(0, 200).join('\n') || '(no matches)' })
+        await walk(ctx.workspaceRoot, '')
+        return out.slice(0, 200).join('\n') || '(no matches)'
+      })
     },
   },
 ]
