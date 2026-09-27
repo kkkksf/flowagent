@@ -56,4 +56,43 @@ describe('TokenBudgetTrim', () => {
       expect(resultIds.has(id)).toBe(true) // 无孤儿 toolCall
     }
   })
+  it('drops sibling tool results when a tool-first history is trimmed', () => {
+    // Discrimination check (verified locally by temporarily reverting trim.ts to the
+    // old one-shot closure): with 7 non-system messages, exactly ONE drop round runs
+    // (after it work.length <= KEEP_TAIL so the outer loop exits). Old one-shot code
+    // starting from work[0]=tool c1 pulled in asst(c1,c1b) but NOT sibling tool c1b,
+    // leaving an orphan tool result in the output -> this test FAILED on old code.
+    // The fixpoint closure drops all three together, so no orphan can survive.
+    // NOTE: a 9-message/tiny-budget history does NOT discriminate — the outer loop
+    // would keep dropping oldest-first until the orphan hits work[0] and is dropped
+    // alone, converging to the same output on old and new code.
+    const asst2 = (n: string, extra?: string): AgentMessage => ({
+      role: 'assistant', content: 'a',
+      toolCalls: [{ id: n, name: 'read_file', arguments: '{}' }, ...(extra ? [{ id: extra, name: 'read_file', arguments: '{}' }] : [])],
+    })
+    // tool-first / inconsistent (restored mid-conversation) history: tool messages
+    // precede their parent assistant. 7 non-system messages (> KEEP_TAIL 6).
+    const smallTool = (n: string): AgentMessage => ({ role: 'tool', toolCallId: n, content: 'x'.repeat(100) })
+    const hist: AgentMessage[] = [
+      sys,
+      smallTool('c1'), smallTool('c1b'), asst2('c1', 'c1b'),
+      user, asst('c2'), smallTool('c2'), user,
+    ]
+    const out = new TokenBudgetTrim({ tokenBudget: 80 }).trim(hist, 80)
+    expect(out.filter((m) => m.role !== 'system').length).toBeLessThan(7) // a drop round ran
+    // every tool message in the output has its parent assistant in the output
+    const callIds = new Set(out.filter((m) => m.role === 'assistant').flatMap((m) => (m as { toolCalls: { id: string }[] }).toolCalls.map((c) => c.id)))
+    for (const m of out.filter((m) => m.role === 'tool')) {
+      expect(callIds.has((m as { toolCallId: string }).toolCallId)).toBe(true) // no orphan tool results
+    }
+    // every assistant's toolCalls have their tool messages in the output
+    const resultIds = new Set(out.filter((m) => m.role === 'tool').map((m) => (m as { toolCallId: string }).toolCallId))
+    for (const id of callIds) {
+      expect(resultIds.has(id)).toBe(true) // no orphan toolCalls
+    }
+    // under this budget the whole c1 pair (both tool results + their assistant) is dropped
+    expect(out.some((m) => (m as { toolCallId?: string }).toolCallId === 'c1')).toBe(false)
+    expect(out.some((m) => (m as { toolCallId?: string }).toolCallId === 'c1b')).toBe(false)
+    expect(out.some((m) => m.role === 'assistant' && m.content === 'a')).toBe(false)
+  })
 })
