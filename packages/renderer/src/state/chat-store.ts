@@ -93,6 +93,12 @@ export const createChatStore = () => {
           return { items }
         }
         case 'approval-required': return { items: [...s.items, { kind: 'approval', id: ev.id, action: ev.action, detail: ev.detail, resolved: null }] }
+        case 'approval-resolved': {
+          const items = s.items.map((it) => it.kind === 'approval' && it.id === ev.id
+            ? { ...it, resolved: (ev.allowed ? 'allowed' : 'denied') as 'allowed' | 'denied' }
+            : it)
+          return { items }
+        }
         case 'agent-idle': return { running: false }
         case 'error': return { items: [...s.items, { kind: 'error', message: ev.message }] }
         default: return {}

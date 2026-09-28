@@ -55,6 +55,13 @@ describe('chat store', () => {
     expect(s.running).toBe(false)
   })
 
+  it('approval-resolved marks the card as allowed', () => {
+    const s = createChatStore().getState()
+    s.applyEvent({ type: 'approval-required', id: 'ap2', action: 'write_file', detail: 'hello.py' })
+    s.applyEvent({ type: 'approval-resolved', id: 'ap2', allowed: true })
+    expect(s.items).toEqual([{ kind: 'approval', id: 'ap2', action: 'write_file', detail: 'hello.py', resolved: 'allowed' }])
+  })
+
   it('lastUserMessage finds latest user text', () => {
     const s = createChatStore().getState()
     s.applyEvent({ type: 'message-delta', text: 'x' })
