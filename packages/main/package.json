@@ -1,0 +1,21 @@
+{
+  "name": "main",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "agent-core": "workspace:*"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-vite": "^4.0.0",
+    "vite": "^7.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2",
+    "@types/node": "^26.6.3"
+  }
+}
