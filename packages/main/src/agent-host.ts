@@ -18,6 +18,7 @@ export class AgentHost {
   private running = false
   private autoApprove = false
   private pending: { id: string; resolve: (allow: boolean) => void } | null = null
+  private pendingHistory: AgentMessage[] | null = null
 
   constructor(private deps: AgentHostDeps) {}
 
@@ -26,8 +27,9 @@ export class AgentHost {
   setAutoApprove(v: boolean): void { this.autoApprove = v }
 
   loadSession(messages: AgentMessage[]): void {
-    this.agent ??= this.deps.makeAgent(async () => true)
-    this.agent.loadHistory(messages)
+    // 不在此处创建 agent：惰性创建必须走 send() 里的审批门回调，否则恢复过会话的进程审批门被旁路
+    if (this.agent) this.agent.loadHistory(messages)
+    else this.pendingHistory = messages
     this.deps.emit({ type: 'history', messages })
   }
 
@@ -41,6 +43,10 @@ export class AgentHost {
         this.deps.emit({ type: 'approval-required', id, action, detail })
         return await new Promise<boolean>((resolve) => { this.pending = { id, resolve } })
       })
+      if (this.pendingHistory) {
+        this.agent.loadHistory(this.pendingHistory) // 恢复会话：把暂存历史灌给惰性创建的 agent
+        this.pendingHistory = null
+      }
       try {
         for await (const ev of this.agent.run(text)) this.forward(ev)
       } catch (e) {

@@ -109,6 +109,34 @@ describe('AgentHost', () => {
     expect(stopped()).toBe(true)
   })
 
+  it('approval gate still applies after loadSession', async () => {
+    const { sink, out } = eventsOf()
+    let decision: boolean | undefined
+    let historyLoaded: AgentMessage[] | undefined
+    const host = new AgentHost({
+      emit: sink.emit,
+      makeAgent: (approve) => ({
+        run: async function* (): AsyncGenerator<AgentEvent> {
+          decision = await approve('write_file', 'a.txt')
+          yield { type: 'done', reason: 'completed' }
+        },
+        stop: () => {},
+        loadHistory: (m) => { historyLoaded = m },
+      }),
+    })
+    host.loadSession([{ role: 'user', content: 'old' }])
+    expect(out).toContainEqual({ type: 'history', messages: [{ role: 'user', content: 'old' }] })
+    const p = host.send('q')
+    await new Promise((r) => setTimeout(r, 10)) // 等 approval-required 发出（若门被旁路则 decision 已为 true）
+    expect(decision).toBeUndefined() // 未 respondApproval：审批门必须仍挂起
+    const card = out.find((e) => e.type === 'approval-required')
+    expect(card).toBeDefined()
+    host.respondApproval((card as { id: string }).id, true)
+    await p
+    expect(decision).toBe(true)
+    expect(historyLoaded).toEqual([{ role: 'user', content: 'old' }]) // 延迟创建的 agent 收到历史
+  })
+
   it('auto-approve skips approval event', async () => {
     const { sink, out } = eventsOf()
     let decision: boolean | undefined
