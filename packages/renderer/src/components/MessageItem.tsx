@@ -1,6 +1,8 @@
 import type React from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { ChatItem } from '../state/chat-store.js'
+import { fa } from '../api/fa.js'
+import { useStore } from '../store.js'
 import { ToolCard } from './ToolCard.js'
 import { ApprovalCard } from './ApprovalCard.js'
 
@@ -13,5 +15,10 @@ export function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
     </div>
   )
   if (item.kind === 'approval') return <ApprovalCard item={item} />
-  return <div style={{ color: '#b00', background: '#fdecea', padding: '6px 12px', borderRadius: 8, margin: '8px 0' }}>错误：{item.message}</div>
+  return (
+    <div style={{ color: '#b00', background: '#fdecea', padding: '6px 12px', borderRadius: 8, margin: '8px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
+      <span style={{ flex: 1 }}>错误：{item.message}</span>
+      <button onClick={() => { const t = useStore.getState().lastUserMessage(); if (t) void fa.sendUserMessage(t) }}>重试上一条</button>
+    </div>
+  )
 }
