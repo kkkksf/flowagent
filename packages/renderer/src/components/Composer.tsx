@@ -25,7 +25,10 @@ export function Composer(): React.JSX.Element {
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
+        onKeyDown={(e) => {
+          if (e.nativeEvent.isComposing) return
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() }
+        }}
         placeholder={model ? '输入任务，Enter 发送（Shift+Enter 换行）' : '请先配置环境变量'}
         disabled={disabled}
         rows={3}
