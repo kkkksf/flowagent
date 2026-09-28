@@ -45,10 +45,17 @@ export class OpenAICompatProvider implements LlmProvider {
       await new Promise((r) => setTimeout(r, this.backoffMs * 2 ** attempt))
     }
     if (!res || !res.ok || !res.body) throw new Error('LLM API: no response body')
+    const contentType = res.headers.get('content-type') ?? ''
+    if (!contentType.includes('text/event-stream')) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`LLM API: unexpected content-type "${contentType}": ${text.slice(0, 200)}`)
+    }
 
     let content = ''
     const calls: ParsedCall[] = []
+    let sawData = false
     for await (const data of parseSse(res.body)) {
+      sawData = true
       if (data === '[DONE]') break
       let delta: OpenAiDelta
       try { delta = (JSON.parse(data) as { choices: { delta: OpenAiDelta }[] }).choices[0]?.delta ?? {} } catch { continue }
@@ -60,6 +67,7 @@ export class OpenAICompatProvider implements LlmProvider {
         if (tc.function?.arguments) slot.arguments += tc.function.arguments
       }
     }
+    if (!sawData) throw new Error('LLM API: empty SSE stream')
     const toolCalls: ToolCall[] = calls.filter((c) => c.id).map((c) => ({ id: c.id, name: c.name, arguments: c.arguments }))
     yield { type: 'result', content, toolCalls }
   }

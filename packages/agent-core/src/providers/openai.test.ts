@@ -13,7 +13,7 @@ function sseResponse(chunks: string[], status = 200): Response {
   const stream = new ReadableStream<Uint8Array>({
     start(c) { for (const ch of chunks) c.enqueue(enc.encode(ch)); c.close() },
   })
-  return new Response(stream, { status })
+  return new Response(stream, { status, headers: { 'content-type': 'text/event-stream' } })
 }
 
 describe('parseSse', () => {
@@ -117,5 +117,32 @@ describe('OpenAICompatProvider.stream', () => {
       type: 'result', content: '',
       toolCalls: [{ id: 'c1', name: 'echo', arguments: '{}' }],
     })
+  })
+})
+
+describe('non-SSE response guards', () => {
+  const body = (text: string, contentType: string) =>
+    new Response(text, { status: 200, headers: { 'content-type': contentType } })
+
+  it('throws on 200 with html body', async () => {
+    const { OpenAICompatProvider } = await import('./openai.js')
+    const p = new OpenAICompatProvider({
+      baseURL: 'http://x', apiKey: 'k', model: 'm', maxRetries: 0, backoffMs: 1,
+      fetchImpl: (async () => body('<!DOCTYPE html><html>blocked</html>', 'text/html')) as typeof fetch,
+    })
+    await expect(async () => {
+      for await (const _ of p.stream([{ role: 'user', content: 'hi' }], [])) void _
+    }).rejects.toThrow(/LLM API:.*blocked/)
+  })
+
+  it('throws on empty sse stream', async () => {
+    const { OpenAICompatProvider } = await import('./openai.js')
+    const p = new OpenAICompatProvider({
+      baseURL: 'http://x', apiKey: 'k', model: 'm', maxRetries: 0, backoffMs: 1,
+      fetchImpl: (async () => body('', 'text/event-stream')) as typeof fetch,
+    })
+    await expect(async () => {
+      for await (const _ of p.stream([{ role: 'user', content: 'hi' }], [])) void _
+    }).rejects.toThrow(/LLM API: empty SSE stream/)
   })
 })
