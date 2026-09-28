@@ -17,7 +17,8 @@ export class JsonlSessionStore implements SessionStore {
       try {
         out.push(JSON.parse(line) as SessionRecord)
       } catch {
-        // 崩溃残留的半行，跳过
+        // 崩溃残留的半行，跳过（留 warn 痕迹便于排查会话文件损坏）
+        console.warn(`skipped corrupt session line: ${line.slice(0, 80)}`)
       }
     }
     return out

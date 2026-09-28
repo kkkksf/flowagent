@@ -48,6 +48,31 @@ describe('AgentHost', () => {
     expect(out.at(-1)).toEqual({ type: 'agent-idle' })
   })
 
+  it('emits agent-idle even when makeAgent throws', async () => {
+    const { sink, out } = eventsOf()
+    const host = new AgentHost({ emit: sink.emit, makeAgent: () => { throw new Error('no agent') } })
+    await host.send('q')
+    expect(out).toContainEqual({ type: 'error', message: 'no agent' })
+    expect(out.at(-1)).toEqual({ type: 'agent-idle' })
+    expect(host.busy).toBe(false)
+  })
+
+  it('emits agent-idle even when deferred loadHistory throws', async () => {
+    const { sink, out } = eventsOf()
+    const host = new AgentHost({
+      emit: sink.emit,
+      makeAgent: () => ({
+        run: async function* (): AsyncGenerator<AgentEvent> { yield { type: 'done', reason: 'completed' } },
+        stop: () => {},
+        loadHistory: () => { throw new Error('bad history') },
+      }),
+    })
+    host.loadSession([{ role: 'user', content: 'old' }])
+    await host.send('q')
+    expect(out).toContainEqual({ type: 'error', message: 'bad history' })
+    expect(out.at(-1)).toEqual({ type: 'agent-idle' })
+  })
+
   it('rejects send while busy', async () => {
     async function* gen(): AsyncGenerator<AgentEvent> {
       yield new Promise<AgentEvent>((r) => setTimeout(() => r({ type: 'step', step: 1 }), 30)) as never

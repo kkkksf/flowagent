@@ -14,6 +14,9 @@ export function registerIpc(deps: {
   }
   // 幂等防御：renderer 可能多次 fa:ready（如 StrictMode 双 effect），onReady 只触发一次
   let readied = false
+  // 刷新/重载（View→Reload、F5、Ctrl+R）后 renderer 是全新上下文：重置 readied，
+  // 让新一次页面加载重新走 ready 握手，补发 getState + history 全量对齐（spec §7）
+  deps.win.webContents.on('did-start-loading', () => { readied = false })
   ipcMain.handle('fa:ready', () => {
     if (readied) return
     readied = true

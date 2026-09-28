@@ -37,17 +37,19 @@ export class AgentHost {
     if (this.running) throw new Error('agent is busy')
     this.running = true
     try {
-      this.agent ??= this.deps.makeAgent(async (action, detail) => {
-        if (this.autoApprove) return true
-        const id = randomUUID()
-        this.deps.emit({ type: 'approval-required', id, action, detail })
-        return await new Promise<boolean>((resolve) => { this.pending = { id, resolve } })
-      })
-      if (this.pendingHistory) {
-        this.agent.loadHistory(this.pendingHistory) // 恢复会话：把暂存历史灌给惰性创建的 agent
-        this.pendingHistory = null
-      }
       try {
+        // agent 创建与 pendingHistory 灌入也在内层 try：一旦抛错同样要走到 agent-idle，
+        // 否则 renderer 的 running 态永远不清、输入框锁死
+        this.agent ??= this.deps.makeAgent(async (action, detail) => {
+          if (this.autoApprove) return true
+          const id = randomUUID()
+          this.deps.emit({ type: 'approval-required', id, action, detail })
+          return await new Promise<boolean>((resolve) => { this.pending = { id, resolve } })
+        })
+        if (this.pendingHistory) {
+          this.agent.loadHistory(this.pendingHistory) // 恢复会话：把暂存历史灌给惰性创建的 agent
+          this.pendingHistory = null
+        }
         for await (const ev of this.agent.run(text)) this.forward(ev)
       } catch (e) {
         this.deps.emit({ type: 'error', message: e instanceof Error ? e.message : String(e) })

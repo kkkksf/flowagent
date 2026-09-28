@@ -30,12 +30,21 @@ describe('file tools', () => {
     expect(await get('read_file').execute({ path: 'hello.txt' }, ctx)).toBe('hi')
   })
 
-  it('write_file asks for approval', async () => {
+  it('write_file asks for approval with path and content preview', async () => {
     let asked = ''
-    const c2: ToolContext = { ...ctx, approve: async (a) => (asked = a, false) }
+    let detail = ''
+    const c2: ToolContext = { ...ctx, approve: async (a, d) => (asked = a, detail = d, false) }
     const out = await get('write_file').execute({ path: 'x.txt', content: 'y' }, c2)
     expect(asked).toBe('write_file')
+    expect(detail).toBe('x.txt\n\ny') // 路径在前 + 内容文本预览（spec §4.1）
     expect(out).toMatch(/denied/i)
+  })
+
+  it('write_file approval preview truncates content at 2000 chars', async () => {
+    let detail = ''
+    const c2: ToolContext = { ...ctx, approve: async (_a, d) => (detail = d, false) }
+    await get('write_file').execute({ path: 'big.txt', content: 'x'.repeat(2500) }, c2)
+    expect(detail).toBe(`big.txt\n\n${'x'.repeat(2000)}`)
   })
 
   it('edit rejects ambiguous match', async () => {

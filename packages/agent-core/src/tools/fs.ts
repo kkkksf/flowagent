@@ -34,7 +34,9 @@ export const fsTools: ToolDefinition[] = [
       required: ['path', 'content'],
     },
     async execute(args, ctx) {
-      if (!(await ctx.approve('write_file', String(args.path)))) return 'error: user denied write_file'
+      // 审批 detail：路径在前 + 内容文本预览（截断 2000 字符），用户不再盲批（spec §4.1）
+      const detail = `${String(args.path)}\n\n${String(args.content).slice(0, 2000)}`
+      if (!(await ctx.approve('write_file', detail))) return 'error: user denied write_file'
       return safeIo(async () => {
         const abs = resolveInWorkspace(ctx.workspaceRoot, String(args.path))
         await mkdir(join(abs, '..'), { recursive: true })

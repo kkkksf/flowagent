@@ -26,11 +26,24 @@ const echoTool: ToolDefinition = {
   async execute(args) { return `echo:${String(args.text)}` },
 }
 
-function makeAgent(provider: LlmProvider, tools: ToolDefinition[] = [echoTool], maxSteps = 30): Agent {
+// 需要审批门的工具：模拟 write_file 这类敏感操作
+const gatedTool: ToolDefinition = {
+  name: 'gated', description: 'tool that requires approval',
+  parameters: { type: 'object', properties: {}, required: [] },
+  async execute(_args, ctx) { return (await ctx.approve('gated', 'd')) ? 'ran' : 'error: user denied gated' },
+}
+
+function makeAgent(
+  provider: LlmProvider,
+  tools: ToolDefinition[] = [echoTool],
+  maxSteps = 30,
+  approve?: AgentConfig['approve'],
+): Agent {
   const cfg: AgentConfig = {
     provider, tools, systemPrompt: 'sys', maxSteps,
     contextStrategy: new TokenBudgetTrim({ tokenBudget: 100_000 }),
     session: new NullSessionStore(),
+    approve,
   }
   return new Agent(cfg)
 }
@@ -94,6 +107,29 @@ describe('Agent loop', () => {
     }
     expect(events.at(-1)).toMatchObject({ type: 'done', reason: 'stopped' })
     expect(events.some((e) => e.type === 'message-delta')).toBe(false)
+  })
+
+  it('stop auto-denies remaining tool approvals in the same assistant message', async () => {
+    const p = fakeProvider([
+      [{ type: 'result', content: '', toolCalls: [
+        { id: 'c1', name: 'gated', arguments: '{}' },
+        { id: 'c2', name: 'gated', arguments: '{}' },
+      ] }],
+      [{ type: 'result', content: 'unreachable', toolCalls: [] }],
+    ])
+    let approveCalls = 0
+    const agent = makeAgent(p, [gatedTool], 30, async () => {
+      approveCalls++
+      agent.stop() // 模拟用户在第一张审批卡挂起时按下停止：审批按拒绝收场
+      return false
+    })
+    const events = await collect(agent.run('go'))
+    const results = events.filter((e): e is Extract<AgentEvent, { type: 'tool-result' }> => e.type === 'tool-result')
+    // 两个工具结果都落历史：无悬空 toolCalls（否则下次 run 会被 provider 400 拒绝）
+    expect(results.map((e) => e.result)).toEqual(['error: user denied gated', 'error: user denied gated'])
+    expect(agent.history.filter((m) => m.role === 'tool')).toHaveLength(2)
+    expect(approveCalls).toBe(1) // 第二个工具的审批被 stopped 短路，不再弹出新的审批
+    expect(events.at(-1)).toEqual({ type: 'done', reason: 'stopped' })
   })
 
   it('run() resets the stop flag so a later run on the same agent works', async () => {
