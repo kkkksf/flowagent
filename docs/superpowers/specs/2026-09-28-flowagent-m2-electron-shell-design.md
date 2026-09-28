@@ -158,10 +158,12 @@ core 的 approve 回调触发
 
 ## 8. 前置修复（agent-core，M2 第一个任务）
 
-M1 演示中实证的缺陷：API 返回 429 + 错误 JSON（如「余额不足」）时
-`OpenAICompatProvider.stream` 静默返回空 `result` 而非抛错，循环无声结束。
-修复：非 2xx 或流中断抛 `ProviderError`；补 vitest 用例（429、4xx、
-流中断不污染历史）。此修复让 M2 的 `error` 事件有真实来源。
+M1 演示中实证的缺陷：API 网关/错误端点返回 **HTTP 200 + 非 SSE 响应体**
+（如 HTML 拦截页）时，`OpenAICompatProvider.stream` 静默返回空 `result`
+而非抛错，循环无声结束（429/5xx 路径已有抛错与重试）。修复：校验响应
+`content-type` 含 `text/event-stream`，否则抛含响应体摘录的错误；SSE 流
+零数据事件同样抛错。补 vitest 用例（200+HTML、空 SSE 流）。此修复让 M2
+的 `error` 事件有真实来源。
 
 ## 9. 测试策略
 
