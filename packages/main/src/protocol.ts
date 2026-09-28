@@ -17,6 +17,7 @@ export interface FaState { workspaceRoot: string | null; model: string | null; h
 
 export interface FaApi {
   getState(): Promise<FaState>
+  ready(): Promise<void> // 渲染端事件监听就绪后调用：触发主进程补发恢复历史（消除启动 history 事件竞态）
   sendUserMessage(text: string): Promise<void>
   stop(): Promise<void>
   respondApproval(id: string, allow: boolean): Promise<void>

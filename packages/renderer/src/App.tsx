@@ -8,8 +8,11 @@ import { Composer } from './components/Composer.js'
 export function App(): React.JSX.Element {
   const meta = useStore((s) => s.meta)
   useEffect(() => {
+    // 先订阅再 ready：保证能收到主进程 ready 后补发的恢复历史
+    const off = fa.onEvent((ev) => useStore.getState().applyEvent(ev))
     void fa.getState().then((st) => useStore.getState().setMeta({ workspaceRoot: st.workspaceRoot, model: st.model }))
-    return fa.onEvent((ev) => useStore.getState().applyEvent(ev))
+    void fa.ready()
+    return off
   }, [])
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>

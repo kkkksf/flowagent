@@ -7,10 +7,18 @@ export function registerIpc(deps: {
   host: AgentHost
   win: BrowserWindow
   getState(): FaState
+  onReady?: () => void
 }): { send: (ev: FaEvent) => void } {
   const send = (ev: FaEvent) => {
     if (!deps.win.isDestroyed()) deps.win.webContents.send('fa:event', ev)
   }
+  // 幂等防御：renderer 可能多次 fa:ready（如 StrictMode 双 effect），onReady 只触发一次
+  let readied = false
+  ipcMain.handle('fa:ready', () => {
+    if (readied) return
+    readied = true
+    deps.onReady?.()
+  })
   ipcMain.handle('fa:getState', () => deps.getState())
   ipcMain.handle('fa:send', (_e, text: unknown) => {
     if (typeof text !== 'string' || !text.trim()) throw new Error('empty message')

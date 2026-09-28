@@ -42,6 +42,9 @@ app.whenReady().then(() => {
   const url = process.env['ELECTRON_RENDERER_URL']
   if (url) void win.loadURL(url); else void win.loadFile(join(__dirname, '../renderer/index.html'))
 
+  // 会话记录启动时读出；恢复动作延迟到渲染端 fa:ready——webContents.send 不缓存无监听者的消息，过早 emit 会丢
+  const history = new JsonlSessionStore(sessionFile).load()
+    .flatMap((r) => (r.kind === 'message' ? [r.message] : []))
   const host = new AgentHost({
     emit: (ev) => { if (!win.isDestroyed()) win.webContents.send('fa:event', ev) },
     makeAgent: (approve) => buildRealAgent(approve, workspaceRoot!, sessionFile),
@@ -49,12 +52,8 @@ app.whenReady().then(() => {
   registerIpc({
     host, win,
     getState: () => ({ workspaceRoot, model, hasSession: existsSync(sessionFile) }),
+    onReady: () => { if (history.length > 0) host.loadSession(history) }, // renderer 未 ready 时静默不恢复
   })
-  // 会话自动恢复
-  const records = new JsonlSessionStore(sessionFile).load()
-  if (records.length > 0) {
-    host.loadSession(records.flatMap((r) => (r.kind === 'message' ? [r.message] : [])))
-  }
   // 关窗：挂起审批按拒绝收场（host.stop 内含），进程干净退出
   win.on('closed', () => { host.stop() })
 })
