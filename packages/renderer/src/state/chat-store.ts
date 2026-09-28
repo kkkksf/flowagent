@@ -60,6 +60,8 @@ function fromHistory(messages: AgentMessage[]): ChatItem[] {
 
 // zustand v5 的 set 每次都会生成新的 state 对象，早期经 getState() 拿到的快照不会自动跟进；
 // commit 在 set 之外把同一份 partial 同步写回初始快照，让持有旧快照的调用方（含测试）也能读到最新值。
+// 已知休眠限制：镜像写法腐蚀 getInitialState() 的语义（返回的是同一被覆写对象，读到当前值而非初始值）；
+// 当前仓库没有 replace 型 set(s, true) 调用方，如未来引入需先处理此处。
 export const createChatStore = () => {
   let initial: ChatStore | undefined
   const useChatStore = create<ChatStore>((set, get) => {
@@ -73,14 +75,12 @@ export const createChatStore = () => {
         case 'message-delta': {
           const items = ensureAssistant(s.items)
           const last = items.at(-1) as { kind: 'assistant'; text: string; tools: ToolCardState[] }
-          last.text += ev.text
-          return { items: [...items], running: true }
+          return { items: items.map((it) => it === last ? { ...last, text: last.text + ev.text } : it), running: true }
         }
         case 'tool-call': {
           const items = ensureAssistant(s.items)
           const last = items.at(-1) as { kind: 'assistant'; text: string; tools: ToolCardState[] }
-          last.tools = [...last.tools, { id: ev.call.id, name: ev.call.name, argsSummary: argsSummary(ev.call.arguments), status: 'running', result: '' }]
-          return { items: [...items] }
+          return { items: items.map((it) => it === last ? { ...last, tools: [...last.tools, { id: ev.call.id, name: ev.call.name, argsSummary: argsSummary(ev.call.arguments), status: 'running', result: '' }] } : it) }
         }
         case 'tool-result': {
           const items = s.items.map((it) => {
