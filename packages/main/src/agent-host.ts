@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { AgentEvent, AgentMessage } from 'agent-core'
+import type { AgentEvent, AgentMessage, ApprovalPayload } from 'agent-core'
 import type { FaEvent } from './protocol.js'
 
 // 契约：approve 在一次 run 内是串行的——agent-core 循环逐个 await 工具，
@@ -12,7 +12,7 @@ export interface AgentLike {
 
 export interface AgentHostDeps {
   emit(ev: FaEvent): void
-  makeAgent(approve: (action: string, detail: string) => Promise<boolean>): AgentLike
+  makeAgent(approve: (action: string, detail: string, payload?: ApprovalPayload) => Promise<boolean>): AgentLike
 }
 
 export class AgentHost {
@@ -43,10 +43,10 @@ export class AgentHost {
       try {
         // agent 创建与 pendingHistory 灌入也在内层 try：一旦抛错同样要走到 agent-idle，
         // 否则 renderer 的 running 态永远不清、输入框锁死
-        this.agent ??= this.deps.makeAgent(async (action, detail) => {
+        this.agent ??= this.deps.makeAgent(async (action, detail, payload) => {
           if (this.autoApprove) return true
           const id = randomUUID()
-          this.deps.emit({ type: 'approval-required', id, action, detail })
+          this.deps.emit({ type: 'approval-required', id, action, detail, payload })
           return await new Promise<boolean>((resolve) => { this.pending = { id, resolve } })
         })
         if (this.pendingHistory) {

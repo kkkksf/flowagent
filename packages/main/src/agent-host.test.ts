@@ -92,7 +92,7 @@ describe('AgentHost', () => {
       emit: sink.emit,
       makeAgent: (approve) => ({
         run: async function* (): AsyncGenerator<AgentEvent> {
-          approveDecision = await approve('write_file', 'a.txt')
+          approveDecision = await approve('write_file', 'a.txt', { path: 'a.txt', kind: 'write' })
           yield { type: 'done', reason: 'completed' }
         },
         stop: () => {},
@@ -103,6 +103,9 @@ describe('AgentHost', () => {
     await new Promise((r) => setTimeout(r, 10)) // 等 approval-required 发出
     const card = out.find((e) => e.type === 'approval-required')
     expect(card).toBeDefined()
+    expect(out.find((e) => e.type === 'approval-required')).toMatchObject({
+      payload: { path: 'a.txt', kind: 'write' },
+    })
     host.respondApproval((card as { id: string }).id, true)
     await p
     expect(approveDecision).toBe(true)

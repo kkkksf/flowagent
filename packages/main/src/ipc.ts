@@ -1,12 +1,14 @@
 import { ipcMain } from 'electron'
 import type { BrowserWindow } from 'electron'
 import type { AgentHost } from './agent-host.js'
+import type { FileService } from './file-service.js'
 import type { FaEvent, FaState } from './protocol.js'
 
 export function registerIpc(deps: {
   host: AgentHost
   win: BrowserWindow
   getState(): FaState
+  fs: FileService
   onReady?: () => void
 }): { send: (ev: FaEvent) => void } {
   const send = (ev: FaEvent) => {
@@ -33,5 +35,14 @@ export function registerIpc(deps: {
     deps.host.respondApproval(String(id), Boolean(allow))
   })
   ipcMain.handle('fa:setAutoApprove', (_e, v: unknown) => { deps.host.setAutoApprove(Boolean(v)) })
+  ipcMain.handle('fa:fs:read', (_e, p: unknown) => deps.fs.read(String(p)))
+  ipcMain.handle('fa:fs:list', (_e, p: unknown) => deps.fs.list(String(p)))
+  ipcMain.handle('fa:fs:create', (_e, p: unknown, kind: unknown) => deps.fs.create(String(p), kind === 'dir' ? 'dir' : 'file'))
+  ipcMain.handle('fa:fs:rename', (_e, a: unknown, b: unknown) => deps.fs.rename(String(a), String(b)))
+  ipcMain.handle('fa:fs:delete', (_e, p: unknown) => deps.fs.delete(String(p)))
+  ipcMain.handle('fa:fs:write', (_e, p: unknown, c: unknown, m: unknown) =>
+    deps.fs.write(String(p), String(c), typeof m === 'number' ? m : undefined))
+  ipcMain.handle('fa:fs:watch', (_e, p: unknown) => { deps.fs.watch(String(p)) })
+  ipcMain.handle('fa:fs:unwatch', (_e, p: unknown) => { deps.fs.unwatch(String(p)) })
   return { send }
 }
