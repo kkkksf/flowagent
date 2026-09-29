@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from 'electron'
+import { app, BrowserWindow, dialog, shell } from 'electron'
 import { existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { Agent, OpenAICompatProvider, fsTools, execTool, todoTool, JsonlSessionStore, TokenBudgetTrim } from 'agent-core'
@@ -43,6 +43,10 @@ app.whenReady().then(() => {
   })
   const url = process.env['ELECTRON_RENDERER_URL']
   if (url) void win.loadURL(url); else void win.loadFile(join(__dirname, '../renderer/index.html'))
+
+  // 导航守卫：markdown 链接/新窗口一律外部浏览器打开，防止应用内导航离开聊天界面
+  win.webContents.setWindowOpenHandler(({ url }) => { void shell.openExternal(url); return { action: 'deny' } })
+  win.webContents.on('will-navigate', (e, url) => { e.preventDefault(); void shell.openExternal(url) })
 
   // 会话记录启动时读出；恢复动作延迟到渲染端 fa:ready——webContents.send 不缓存无监听者的消息，过早 emit 会丢
   const history = new JsonlSessionStore(sessionFile).load()

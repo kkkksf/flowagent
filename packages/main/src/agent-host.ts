@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type { AgentEvent, AgentMessage } from 'agent-core'
 import type { FaEvent } from './protocol.js'
 
+// 契约：approve 在一次 run 内是串行的——agent-core 循环逐个 await 工具，
+// 因此 AgentHost 的单槽 pending 挂起结构是安全的。引入并行工具执行前必须先改此处。
 export interface AgentLike {
   run(input: string): AsyncGenerator<AgentEvent>
   stop(): void
@@ -28,7 +30,8 @@ export class AgentHost {
 
   loadSession(messages: AgentMessage[]): void {
     // 不在此处创建 agent：惰性创建必须走 send() 里的审批门回调，否则恢复过会话的进程审批门被旁路
-    if (this.agent) this.agent.loadHistory(messages)
+    // running 期间不重赋在飞历史（F5 场景）：暂存 pendingHistory，下次 send 前灌入
+    if (this.agent && !this.running) this.agent.loadHistory(messages)
     else this.pendingHistory = messages
     this.deps.emit({ type: 'history', messages })
   }

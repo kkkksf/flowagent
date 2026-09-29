@@ -181,4 +181,28 @@ describe('AgentHost', () => {
     expect(decision).toBe(true)
     expect(out.some((e) => e.type === 'approval-required')).toBe(false)
   })
+
+  it('defers loadSession while running', async () => {
+    let release!: () => void
+    async function* gen(): AsyncGenerator<AgentEvent> {
+      yield { type: 'message-delta', text: 'x' }
+      await new Promise<void>((r) => { release = r })
+      yield { type: 'done', reason: 'completed' }
+    }
+    const { sink } = eventsOf()
+    const loaded: AgentMessage[][] = []
+    const agent = { run: gen, stop: () => {}, loadHistory: (m: AgentMessage[]) => { loaded.push(m) } }
+    const host = new AgentHost({ emit: sink.emit, makeAgent: () => agent })
+    const p = host.send('first')
+    host.loadSession([{ role: 'user', content: 'restored' }]) // running 中：暂存不打断在飞 run
+    await new Promise((r) => setTimeout(r, 10)) // 等 run 挂起在 release 上（同步阶段 release 尚未赋值）
+    release()
+    await p
+    expect(loaded).toEqual([]) // 本次 run 未被重赋
+    const p2 = host.send('second') // 下次 send 前灌入（loadHistory 在 send 同步段执行）
+    await new Promise((r) => setTimeout(r, 10)) // 第二次 run 同样挂在 release 门上
+    release()
+    await p2
+    expect(loaded).toEqual([[{ role: 'user', content: 'restored' }]])
+  })
 })
