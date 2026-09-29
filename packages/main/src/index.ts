@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog } from 'electron'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { Agent, OpenAICompatProvider, fsTools, execTool, todoTool, JsonlSessionStore, TokenBudgetTrim } from 'agent-core'
 import { AgentHost } from './agent-host.js'
 import { registerIpc } from './ipc.js'
@@ -33,6 +33,8 @@ app.whenReady().then(() => {
     saveSettings(settingsFile, { workspaceRoot })
   }
   const sessionFile = join(workspaceRoot, '.flowagent', 'session.jsonl')
+  // appendFileSync 不会创建父目录：首次落盘前必须先建 .flowagent/（M1 CLI 同款处理）
+  mkdirSync(dirname(sessionFile), { recursive: true })
   const model = process.env.FLOWAGENT_MODEL ?? null
 
   const win = new BrowserWindow({
