@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { FileService } from './file-service.js'
@@ -68,6 +68,23 @@ describe('FileService', () => {
     await new Promise((r) => setTimeout(r, 100)) // 给 watcher 一点启动时间
     writeFileSync(join(root, 'w.txt'), 'b', 'utf8')
     await waitFor(() => changed.includes('w.txt'))
+  })
+  it('watch reports errors via onWatchError and unwatches', async () => {
+    // Windows 实测：删除被 watch 文件本身只触发 rename；递归删除其父目录会触发 EPERM error
+    mkdirSync(join(root, 'd'))
+    writeFileSync(join(root, 'd/f.txt'), 'a', 'utf8')
+    const errors: Array<{ p: string; err: unknown }> = []
+    const svc2 = new FileService(root, {
+      onFileChanged: (p) => changed.push(p),
+      onWatchError: (p, err) => errors.push({ p, err }),
+    })
+    svc2.watch('d/f.txt')
+    await new Promise((r) => setTimeout(r, 100)) // 给 watcher 一点启动时间
+    rmSync(join(root, 'd'), { recursive: true, force: true })
+    await waitFor(() => errors.length > 0)
+    expect(errors[0].p).toBe('d/f.txt')
+    expect(errors[0].err).toBeTruthy()
+    svc2.unwatchAll() // error handler 已清理过；再清一次验证幂等
   })
   it('unwatchAll closes everything', () => {
     writeFileSync(join(root, 'u.txt'), '', 'utf8')

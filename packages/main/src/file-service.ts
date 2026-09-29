@@ -9,7 +9,10 @@ export type WriteResult = { ok: true; mtimeMs: number } | { ok: false; conflict:
 
 export class FileService {
   private watchers = new Map<string, FSWatcher>()
-  constructor(private root: string, private deps: { onFileChanged(relPath: string): void }) {}
+  constructor(
+    private root: string,
+    private deps: { onFileChanged(relPath: string): void; onWatchError?(relPath: string, err: unknown): void },
+  ) {}
 
   async read(p: string): Promise<ReadResult> {
     const abs = resolveInWorkspace(this.root, p)
@@ -52,7 +55,7 @@ export class FileService {
     if (this.watchers.has(abs)) return
     try {
       const w = watch(abs, () => this.deps.onFileChanged(p))
-      w.on('error', () => this.unwatch(p))
+      w.on('error', (err) => { this.unwatch(p); this.deps.onWatchError?.(p, err) })
       this.watchers.set(abs, w)
     } catch { /* 文件不存在时静默；read 成功后再 watch */ }
   }
