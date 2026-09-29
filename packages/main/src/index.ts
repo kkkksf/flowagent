@@ -44,9 +44,17 @@ app.whenReady().then(() => {
   const url = process.env['ELECTRON_RENDERER_URL']
   if (url) void win.loadURL(url); else void win.loadFile(join(__dirname, '../renderer/index.html'))
 
-  // 导航守卫：markdown 链接/新窗口一律外部浏览器打开，防止应用内导航离开聊天界面
-  win.webContents.setWindowOpenHandler(({ url }) => { void shell.openExternal(url); return { action: 'deny' } })
-  win.webContents.on('will-navigate', (e, url) => { e.preventDefault(); void shell.openExternal(url) })
+  // 导航守卫：markdown 链接/新窗口一律外部浏览器打开，防止应用内导航离开聊天界面。
+  // 例外：应用自身刷新（F5/Ctrl+R，目标 url === 当前页 getURL()）放行——reload 是预导航事件，
+  // getURL() 仍是当前页；若 preventDefault 会把应用 URL 丢给外部浏览器，渲染出无 preload 的死副本
+  // （会话恢复流程依赖 reload，M3 Task 4）。openExternal 一律 .catch 兜底：about:blank#blocked
+  // 类非法 URL 的 rejection 不能变成 unhandled。
+  win.webContents.setWindowOpenHandler(({ url }) => { void shell.openExternal(url).catch(() => {}); return { action: 'deny' } })
+  win.webContents.on('will-navigate', (e, url) => {
+    if (url === win.webContents.getURL()) return // 应用自身 reload：放行
+    e.preventDefault()
+    void shell.openExternal(url).catch(() => {})
+  })
 
   // 会话记录启动时读出；恢复动作延迟到渲染端 fa:ready——webContents.send 不缓存无监听者的消息，过早 emit 会丢
   const history = new JsonlSessionStore(sessionFile).load()
