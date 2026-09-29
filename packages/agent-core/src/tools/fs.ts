@@ -1,6 +1,6 @@
 import { readFile, readdir, writeFile, mkdir, stat } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
-import type { ToolDefinition } from '../types.js'
+import type { ToolDefinition, ApprovalPayload } from '../types.js'
 
 export function resolveInWorkspace(root: string, relativePath: string): string {
   const abs = isAbsolute(relativePath) ? resolve(relativePath) : resolve(root, relativePath)
@@ -36,7 +36,8 @@ export const fsTools: ToolDefinition[] = [
     async execute(args, ctx) {
       // 审批 detail：路径在前 + 内容文本预览（截断 2000 字符），用户不再盲批（spec §4.1）
       const detail = `${String(args.path)}\n\n${String(args.content).slice(0, 2000)}`
-      if (!(await ctx.approve('write_file', detail))) return 'error: user denied write_file'
+      const payload: ApprovalPayload = { path: String(args.path), kind: 'write', content: String(args.content) }
+      if (!(await ctx.approve('write_file', detail, payload))) return 'error: user denied write_file'
       return safeIo(async () => {
         const abs = resolveInWorkspace(ctx.workspaceRoot, String(args.path))
         await mkdir(join(abs, '..'), { recursive: true })
@@ -57,7 +58,11 @@ export const fsTools: ToolDefinition[] = [
       required: ['path', 'old_string', 'new_string'],
     },
     async execute(args, ctx) {
-      if (!(await ctx.approve('edit_file', String(args.path)))) return 'error: user denied edit_file'
+      // 审批 detail：路径 + old→new 预览（各截断 800 字符），与 payload 一并供 UI 渲染 diff
+      const old = String(args.old_string); const neu = String(args.new_string)
+      const detail = `${String(args.path)}\n\n${old.slice(0, 800)}\n→\n${neu.slice(0, 800)}`
+      const payload: ApprovalPayload = { path: String(args.path), kind: 'edit', oldString: old, newString: neu }
+      if (!(await ctx.approve('edit_file', detail, payload))) return 'error: user denied edit_file'
       return safeIo(async () => {
         const abs = resolveInWorkspace(ctx.workspaceRoot, String(args.path))
         const content = await readFile(abs, 'utf8')

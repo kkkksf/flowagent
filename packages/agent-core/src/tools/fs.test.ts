@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs'
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -96,5 +97,33 @@ describe('file tools', () => {
   it('glob ? matches a single character', async () => {
     const out = await get('glob').execute({ pattern: 'hell?.txt' }, ctx)
     expect(out).toContain('hello.txt')
+  })
+})
+
+describe('approval payload', () => {
+  it('write_file passes structured payload', async () => {
+    const calls: { action: string; detail: string; payload?: unknown }[] = []
+    const tool = fsTools.find((t) => t.name === 'write_file')!
+    const res = await tool.execute({ path: 'p.txt', content: 'hello' }, {
+      workspaceRoot: root,
+      approve: async (action, detail, payload) => { calls.push({ action, detail, payload }); return true },
+    })
+    expect(res).toMatch(/^ok: wrote/)
+    expect(calls[0]).toMatchObject({
+      action: 'write_file',
+      payload: { path: 'p.txt', kind: 'write', content: 'hello' },
+    })
+  })
+  it('edit_file passes old/new payload and preview detail', async () => {
+    const calls: { action: string; detail: string; payload?: unknown }[] = []
+    writeFileSync(join(root, 'e.txt'), 'aaa bbb aaa')
+    const tool = fsTools.find((t) => t.name === 'edit_file')!
+    await tool.execute({ path: 'e.txt', old_string: 'bbb', new_string: 'ccc' }, {
+      workspaceRoot: root,
+      approve: async (action, detail, payload) => { calls.push({ action, detail, payload }); return true },
+    })
+    expect(calls[0].payload).toEqual({ path: 'e.txt', kind: 'edit', oldString: 'bbb', newString: 'ccc' })
+    expect(String(calls[0].detail)).toContain('e.txt')
+    expect(String(calls[0].detail)).toContain('bbb')
   })
 })

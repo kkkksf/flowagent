@@ -15,9 +15,16 @@ export interface LlmProvider {
 }
 
 // 工具接口
+export interface ApprovalPayload {
+  path: string
+  kind: 'write' | 'edit' | 'run'
+  content?: string     // write_file 全文
+  oldString?: string   // edit_file 原
+  newString?: string   // edit_file 新
+}
 export interface ToolContext {
   workspaceRoot: string
-  approve(action: string, detail: string): Promise<boolean>
+  approve(action: string, detail: string, payload?: ApprovalPayload): Promise<boolean>
 }
 export interface ToolDefinition {
   name: string
@@ -46,7 +53,7 @@ export interface AgentConfig {
   session: SessionStore // 可为 NullSessionStore
   workspaceRoot?: string
   autoApprove?: boolean
-  approve?: (action: string, detail: string) => Promise<boolean>
+  approve?: (action: string, detail: string, payload?: ApprovalPayload) => Promise<boolean>
 }
 
 // 占位：ContextStrategy、SessionStore 在 Task 6/7 填充方法

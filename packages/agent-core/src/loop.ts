@@ -71,12 +71,12 @@ export class Agent {
         try {
           toolResult = await this.registry.run(call.name, call.arguments, {
             workspaceRoot: this.cfg.workspaceRoot ?? process.cwd(),
-            approve: async (action, detail) => {
+            approve: async (action, detail, payload) => {
               // 停止后同一 assistant 消息里的剩余审批一律自动拒绝：
               // 工具结果仍会落历史（避免悬空 toolCalls 导致下次请求 400），循环在既有检查处自然终止
               if (this.stopped) return false
               if (this.cfg.autoApprove) return true
-              return this.cfg.approve?.(action, detail) ?? false
+              return this.cfg.approve?.(action, detail, payload) ?? false
             },
           })
         } catch (e) {
