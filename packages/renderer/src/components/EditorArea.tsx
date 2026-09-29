@@ -3,6 +3,7 @@ import type React from 'react'
 import { fa } from '../api/fa.js'
 import { useEditorStore } from '../editor-store-instance.js'
 import { openFileFromDisk } from '../editor-events.js'
+import { DiffPane } from './DiffPane.js'
 
 const MonacoPane = lazy(() => import('./MonacoPane.js').then((m) => ({ default: m.MonacoPane })))
 
@@ -56,7 +57,7 @@ export function EditorArea(): React.JSX.Element {
       )}
       <div style={{ flex: 1, minHeight: 0 }}>
         {active?.kind === 'diff' ? (
-          <div style={{ padding: 24, color: '#888' }}>diff 视图（Task 8 接入 DiffPane）</div>
+          <DiffPane tab={active} />
         ) : active?.kind === 'file' ? (
           <Suspense fallback={<div style={{ padding: 24, color: '#888' }}>编辑器加载中…</div>}><MonacoPane /></Suspense>
         ) : (

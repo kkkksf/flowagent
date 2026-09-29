@@ -1,11 +1,11 @@
 import { create } from 'zustand'
-import type { FaEvent, AgentMessage, ToolCall } from '../../../main/src/protocol.js'
+import type { FaEvent, AgentMessage, ToolCall, ApprovalPayload } from '../../../main/src/protocol.js'
 
-export interface ToolCardState { id: string; name: string; argsSummary: string; status: 'running' | 'done' | 'error'; result: string }
+export interface ToolCardState { id: string; name: string; argsSummary: string; path?: string; status: 'running' | 'done' | 'error'; result: string }
 export type ChatItem =
   | { kind: 'user'; text: string }
   | { kind: 'assistant'; text: string; tools: ToolCardState[] }
-  | { kind: 'approval'; id: string; action: string; detail: string; resolved: 'allowed' | 'denied' | null }
+  | { kind: 'approval'; id: string; action: string; detail: string; payload?: ApprovalPayload; resolved: 'allowed' | 'denied' | null }
   | { kind: 'error'; message: string }
 
 export interface ChatMeta { workspaceRoot: string | null; model: string | null }
@@ -27,6 +27,14 @@ function argsSummary(args: string): string {
   } catch { return args.slice(0, 120) }
 }
 
+// 带 path 参数的工具（write/edit/list_dir…）解析出路径，供工具卡点击跳转（Task 8）
+function parsePath(args: string): string | undefined {
+  try {
+    const o = JSON.parse(args) as Record<string, unknown>
+    return typeof o.path === 'string' ? o.path : undefined
+  } catch { return undefined }
+}
+
 function ensureAssistant(items: ChatItem[]): ChatItem[] {
   if (items.at(-1)?.kind === 'assistant') return items
   return [...items, { kind: 'assistant', text: '', tools: [] } as ChatItem]
@@ -40,7 +48,7 @@ function fromHistory(messages: AgentMessage[]): ChatItem[] {
       out.push({
         kind: 'assistant',
         text: m.content,
-        tools: m.toolCalls.map((c: ToolCall) => ({ id: c.id, name: c.name, argsSummary: argsSummary(c.arguments), status: 'running' as const, result: '' })),
+        tools: m.toolCalls.map((c: ToolCall) => ({ id: c.id, name: c.name, argsSummary: argsSummary(c.arguments), path: parsePath(c.arguments), status: 'running' as const, result: '' })),
       })
     } else if (m.role === 'tool') {
       for (let i = out.length - 1; i >= 0; i--) {
@@ -80,7 +88,7 @@ export const createChatStore = () => {
         case 'tool-call': {
           const items = ensureAssistant(s.items)
           const last = items.at(-1) as { kind: 'assistant'; text: string; tools: ToolCardState[] }
-          return { items: items.map((it) => it === last ? { ...last, tools: [...last.tools, { id: ev.call.id, name: ev.call.name, argsSummary: argsSummary(ev.call.arguments), status: 'running', result: '' }] } : it) }
+          return { items: items.map((it) => it === last ? { ...last, tools: [...last.tools, { id: ev.call.id, name: ev.call.name, argsSummary: argsSummary(ev.call.arguments), path: parsePath(ev.call.arguments), status: 'running', result: '' }] } : it) }
         }
         case 'tool-result': {
           const items = s.items.map((it) => {
@@ -92,7 +100,7 @@ export const createChatStore = () => {
           })
           return { items }
         }
-        case 'approval-required': return { items: [...s.items, { kind: 'approval', id: ev.id, action: ev.action, detail: ev.detail, resolved: null }] }
+        case 'approval-required': return { items: [...s.items, { kind: 'approval', id: ev.id, action: ev.action, detail: ev.detail, payload: ev.payload, resolved: null }] }
         case 'approval-resolved': {
           const items = s.items.map((it) => it.kind === 'approval' && it.id === ev.id
             ? { ...it, resolved: (ev.allowed ? 'allowed' : 'denied') as 'allowed' | 'denied' }

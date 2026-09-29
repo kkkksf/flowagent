@@ -41,9 +41,24 @@ describe('chat store', () => {
     })
     expect(s.items).toEqual([
       { kind: 'user', text: 'go' },
-      { kind: 'assistant', text: '', tools: [{ id: 'a1', name: 'write_file', argsSummary: 'a.txt', status: 'done', result: 'wrote 3 bytes' }] },
+      { kind: 'assistant', text: '', tools: [{ id: 'a1', name: 'write_file', argsSummary: 'a.txt', path: 'a.txt', status: 'done', result: 'wrote 3 bytes' }] },
       { kind: 'assistant', text: 'done', tools: [] },
     ])
+  })
+
+  it('approval-required carries payload', () => {
+    const s = createChatStore().getState()
+    s.applyEvent({ type: 'approval-required', id: 'ap9', action: 'write_file', detail: 'p.txt', payload: { path: 'p.txt', kind: 'write', content: 'X' } })
+    expect(s.items.at(-1)).toMatchObject({ kind: 'approval', id: 'ap9', payload: { path: 'p.txt', kind: 'write' } })
+  })
+
+  it('tool-call parses path from arguments', () => {
+    const s = createChatStore().getState()
+    s.applyEvent({ type: 'tool-call', call: { id: 't2', name: 'edit_file', arguments: '{"path":"a.txt","old_string":"x"}' } })
+    s.applyEvent({ type: 'tool-call', call: { id: 't3', name: 'run_command', arguments: '{"command":"ls"}' } })
+    const asst = s.items.at(-1) as { tools: { id: string; path?: string }[] }
+    expect(asst.tools[0].path).toBe('a.txt')
+    expect(asst.tools[1].path).toBeUndefined()
   })
 
   it('approval card then error then idle', () => {
