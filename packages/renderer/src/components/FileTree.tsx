@@ -61,13 +61,19 @@ const rowStyle = (depth: number): React.CSSProperties => ({
 
 const iconBtn: React.CSSProperties = { border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px', lineHeight: '16px', color: '#555' }
 
-export function FileTree({ onOpenFile = openFileFromDisk }: { onOpenFile?: (path: string) => void }): React.JSX.Element {
+// 折叠状态由 App 持有（左栏容器宽度随之 240px ↔ 32px），FileTree 只负责渲染窄条/树体
+export interface FileTreeProps {
+  onOpenFile?: (path: string) => void
+  collapsed: boolean
+  onToggleCollapse: () => void
+}
+
+export function FileTree({ onOpenFile = openFileFromDisk, collapsed, onToggleCollapse }: FileTreeProps): React.JSX.Element {
   const [rootChildren, setRootChildren] = useState<TreeNode[] | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [menu, setMenu] = useState<ContextMenu | null>(null)
   const [pending, setPending] = useState<PendingInput | null>(null)
   const [pendingValue, setPendingValue] = useState('')
-  const [collapsed, setCollapsed] = useState(false)
   const agentTouched = useEditorStore((s) => s.agentTouched)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -223,8 +229,8 @@ export function FileTree({ onOpenFile = openFileFromDisk }: { onOpenFile?: (path
 
   if (collapsed) {
     return (
-      <div style={{ width: 32, height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4 }}>
-        <button type="button" title="展开文件树" style={iconBtn} onClick={() => setCollapsed(false)}>»</button>
+      <div style={{ width: '100%', minHeight: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4 }}>
+        <button type="button" title="展开文件树" style={iconBtn} onClick={onToggleCollapse}>»</button>
       </div>
     )
   }
@@ -249,7 +255,7 @@ export function FileTree({ onOpenFile = openFileFromDisk }: { onOpenFile?: (path
         <span>工作区</span>
         <span style={{ display: 'flex' }}>
           <button type="button" title="刷新" style={iconBtn} onClick={() => setRefreshKey((k) => k + 1)}>⟳</button>
-          <button type="button" title="折叠" style={iconBtn} onClick={() => setCollapsed(true)}>«</button>
+          <button type="button" title="折叠" style={iconBtn} onClick={onToggleCollapse}>«</button>
         </span>
       </div>
       <div style={{ paddingTop: 2 }}>
