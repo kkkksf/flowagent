@@ -5,6 +5,13 @@ export interface FileTab { id: string; kind: 'file'; path: string; content: stri
 export interface DiffTab { id: string; kind: 'diff'; approvalId: string; path: string; original: string; modified: string; resolved: 'allowed' | 'denied' | null }
 export type EditorTab = FileTab | DiffTab
 
+// 路径身份统一（spec §3/§7）：模型输出常给 `src\a.txt`（Windows 反斜杠），树/标签用 `src/a.txt`；
+// 入 store 的路径一律 trim + 反斜杠转正斜杠，两种写法才能命中同一标签、圆点与脏守卫。
+// 入口（openFileFromDisk / tool-call / parsePath / ApprovalCard）各自归一，store 内 path 键动作再兜底一次。
+export function normalizePath(p: string): string {
+  return p.trim().replace(/\\/g, '/')
+}
+
 export function buildDiffModified(payload: ApprovalPayload, original: string): string {
   if (payload.kind === 'write') return payload.content ?? ''
   return original.split(payload.oldString ?? '').join(payload.newString ?? '')
@@ -46,6 +53,7 @@ export const createEditorStore = () => {
       tabs: [], activeTabId: null, agentTouched: [], recentPaths: [], notice: null,
       setNotice: (msg) => commit({ notice: msg }),
       openFile: (path, content, mtimeMs) => {
+        path = normalizePath(path)
         const front = (paths: string[]) => [path, ...paths.filter((p) => p !== path)].slice(0, 10)
         const existing = get().tabs.find((t) => t.kind === 'file' && t.path === path)
         if (existing) {
@@ -70,6 +78,7 @@ export const createEditorStore = () => {
       setConflict: (id, conflict) => commit({ tabs: get().tabs.map((t) => t.id === id && t.kind === 'file' ? { ...t, conflict } : t) }),
       reloadContent: (id, content, mtimeMs) => commit({ tabs: get().tabs.map((t) => t.id === id && t.kind === 'file' ? { ...t, content, knownMtime: mtimeMs } : t) }),
       openDiff: (approvalId, path, original, modified) => {
+        path = normalizePath(path)
         const id = `d:${approvalId}`
         commit({
           tabs: [...get().tabs.filter((t) => !(t.kind === 'diff' && t.approvalId === approvalId)), { id, kind: 'diff', approvalId, path, original, modified, resolved: null }],
@@ -79,11 +88,12 @@ export const createEditorStore = () => {
       },
       resolveDiff: (approvalId, allowed) => commit({ tabs: get().tabs.map((t) => t.kind === 'diff' && t.approvalId === approvalId ? { ...t, resolved: (allowed ? 'allowed' : 'denied') as 'allowed' | 'denied' } : t) }),
       markAgentTouched: (path) => {
+        path = normalizePath(path)
         const cur = get().agentTouched
         commit({ agentTouched: cur.includes(path) ? cur : [...cur, path] })
       },
-      clearAgentTouched: (path) => commit({ agentTouched: get().agentTouched.filter((p) => p !== path) }),
-      hasDirtyTab: (path) => get().tabs.some((t) => t.kind === 'file' && t.path === path && t.dirty),
+      clearAgentTouched: (path) => commit({ agentTouched: get().agentTouched.filter((p) => p !== normalizePath(path)) }),
+      hasDirtyTab: (path) => get().tabs.some((t) => t.kind === 'file' && t.path === normalizePath(path) && t.dirty),
     }
     return initial
   })

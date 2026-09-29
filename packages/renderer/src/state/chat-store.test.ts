@@ -61,6 +61,13 @@ describe('chat store', () => {
     expect(asst.tools[1].path).toBeUndefined()
   })
 
+  it('tool-call normalizes backslash paths', () => {
+    const s = createChatStore().getState()
+    s.applyEvent({ type: 'tool-call', call: { id: 't4', name: 'write_file', arguments: '{"path":"src\\\\a.txt"}' } })
+    const asst = s.items.at(-1) as { tools: { path?: string }[] }
+    expect(asst.tools[0].path).toBe('src/a.txt') // 点击跳转/审批载荷与编辑器标签同身份
+  })
+
   it('approval card then error then idle', () => {
     const s = createChatStore().getState()
     s.applyEvent({ type: 'approval-required', id: 'ap1', action: 'run_command', detail: 'python hello.py' })

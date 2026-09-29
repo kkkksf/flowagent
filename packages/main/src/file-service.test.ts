@@ -62,6 +62,12 @@ describe('FileService', () => {
     await svc.delete('d1')
     expect(existsSync(join(root, 'd1'))).toBe(false)
   })
+  it('create file on existing path rejects with EEXIST and keeps content', async () => {
+    await svc.create('a.txt', 'file')
+    await svc.write('a.txt', 'keep me')
+    await expect(svc.create('a.txt', 'file')).rejects.toMatchObject({ code: 'EEXIST' }) // 绝不静默清空
+    expect(readFileSync(join(root, 'a.txt'), 'utf8')).toBe('keep me')
+  })
   it('watch reports relative path on change', async () => {
     writeFileSync(join(root, 'w.txt'), 'a', 'utf8')
     svc.watch('w.txt')

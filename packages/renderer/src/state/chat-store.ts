@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { FaEvent, AgentMessage, ToolCall, ApprovalPayload } from '../../../main/src/protocol.js'
+import { normalizePath } from './editor-store.js'
 
 export interface ToolCardState { id: string; name: string; argsSummary: string; path?: string; status: 'running' | 'done' | 'error'; result: string }
 export type ChatItem =
@@ -27,11 +28,12 @@ function argsSummary(args: string): string {
   } catch { return args.slice(0, 120) }
 }
 
-// 带 path 参数的工具（write/edit/list_dir…）解析出路径，供工具卡点击跳转（Task 8）
+// 带 path 参数的工具（write/edit/list_dir…）解析出路径，供工具卡点击跳转（Task 8）；
+// 模型常给 Windows 反斜杠，归一成 '/' 书写，点击跳转/审批载荷才能与编辑器标签对上
 function parsePath(args: string): string | undefined {
   try {
     const o = JSON.parse(args) as Record<string, unknown>
-    return typeof o.path === 'string' ? o.path : undefined
+    return typeof o.path === 'string' ? normalizePath(o.path) : undefined
   } catch { return undefined }
 }
 

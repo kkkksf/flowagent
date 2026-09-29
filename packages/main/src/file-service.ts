@@ -29,7 +29,7 @@ export class FileService {
   async create(p: string, kind: 'file' | 'dir'): Promise<void> {
     const abs = resolveInWorkspace(this.root, p)
     if (kind === 'dir') await mkdir(abs, { recursive: true })
-    else { await mkdir(dirname(abs), { recursive: true }); await writeFile(abs, '', 'utf8') }
+    else { await mkdir(dirname(abs), { recursive: true }); await writeFile(abs, '', { encoding: 'utf8', flag: 'wx' }) } // wx：已存在即 EEXIST，绝不静默清空
   }
   async rename(from: string, to: string): Promise<void> {
     const a = resolveInWorkspace(this.root, from); const b = resolveInWorkspace(this.root, to)

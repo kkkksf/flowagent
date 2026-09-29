@@ -13,7 +13,7 @@ export function DiffPane({ tab }: { tab: DiffTab }): React.JSX.Element {
         {tab.resolved === null ? (<>
           <button onClick={() => requestApproval(tab.approvalId, true, tab.path)}>✓ 允许</button>
           <button onClick={() => requestApproval(tab.approvalId, false)}>✗ 拒绝</button>
-          <button onClick={() => { void fa.setAutoApprove(true); requestApproval(tab.approvalId, true, tab.path) }}>✓ 允许且本会话不再询问</button>
+          <button onClick={() => { if (requestApproval(tab.approvalId, true, tab.path)) void fa.setAutoApprove(true) }}>✓ 允许且本会话不再询问</button>
         </>) : <span style={{ color: '#666' }}>已{tab.resolved === 'allowed' ? '允许' : '拒绝'}</span>}
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>

@@ -46,8 +46,14 @@ export function MonacoPane(): React.JSX.Element {
         const s = useEditorStore.getState()
         const t = s.tabs.find((x) => x.id === s.activeTabId)
         if (!t || t.kind !== 'file') return
-        void fa.fs.write(t.path, t.content, t.knownMtime).then((r) => {
-          if (r.ok) { s.markSaved(t.id, r.mtimeMs); void fa.fs.watch(t.path) }
+        const written = t.content // 写入磁盘的内容快照；返回时标签内容若已变，不能误清脏标记
+        void fa.fs.write(t.path, written, t.knownMtime).then((r) => {
+          if (r.ok) {
+            void fa.fs.watch(t.path)
+            const cur = useEditorStore.getState().tabs.find((x) => x.id === t.id)
+            if (cur && cur.kind === 'file' && cur.content === written) s.markSaved(t.id, r.mtimeMs)
+            // 写回期间用户又改了内容：磁盘上是 written，标签保持脏，交给下一次保存
+          }
           else { s.setConflict(t.id, true); s.setNotice('保存冲突：文件已在磁盘上更改') }
         }).catch((err: unknown) => s.setNotice(String(err)))
       }
