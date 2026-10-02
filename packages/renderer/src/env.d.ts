@@ -4,3 +4,6 @@ declare module '*?worker' {
   const workerConstructor: new () => Worker
   export default workerConstructor
 }
+
+// xterm 样式副作用导入（@xterm/xterm/css/xterm.css）的通配声明
+declare module '*.css'

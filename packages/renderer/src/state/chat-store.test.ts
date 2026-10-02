@@ -84,6 +84,15 @@ describe('chat store', () => {
     expect(s.items).toEqual([{ kind: 'approval', id: 'ap2', action: 'write_file', detail: 'hello.py', resolved: 'allowed' }])
   })
 
+  it('usage takes latest not sum; history resets', () => {
+    const s = createChatStore().getState()
+    s.applyEvent({ type: 'usage', promptTokens: 10, completionTokens: 5 })
+    s.applyEvent({ type: 'usage', promptTokens: 25, completionTokens: 8 }) // 第二次请求已含全部历史
+    expect(s.usage).toEqual({ prompt: 25, completion: 8 })
+    s.applyEvent({ type: 'history', messages: [] })                          // 切会话
+    expect(s.usage).toBeNull()
+  })
+
   it('lastUserMessage finds latest user text', () => {
     const s = createChatStore().getState()
     s.applyEvent({ type: 'message-delta', text: 'x' })

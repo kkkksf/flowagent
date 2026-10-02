@@ -10,11 +10,14 @@ export type ChatItem =
   | { kind: 'error'; message: string }
 
 export interface ChatMeta { workspaceRoot: string | null; model: string | null }
+// 单次请求的 usage 已含全部历史 token，取 LATEST 覆盖、严禁累加；切会话（history）重置 null
+export interface ChatUsage { prompt: number; completion: number }
 
 interface ChatStore {
   items: ChatItem[]
   running: boolean
   meta: ChatMeta
+  usage: ChatUsage | null
   applyEvent(ev: FaEvent): void
   setMeta(m: ChatMeta): void
   lastUserMessage(): string | null
@@ -81,7 +84,7 @@ export const createChatStore = () => {
     }
     const reduce = (s: ChatStore, ev: FaEvent): Partial<ChatStore> => {
       switch (ev.type) {
-        case 'history': return { items: fromHistory(ev.messages) }
+        case 'history': return { items: fromHistory(ev.messages), usage: null }
         case 'message-delta': {
           const items = ensureAssistant(s.items)
           const last = items.at(-1) as { kind: 'assistant'; text: string; tools: ToolCardState[] }
@@ -110,6 +113,7 @@ export const createChatStore = () => {
           return { items }
         }
         case 'agent-idle': return { running: false }
+        case 'usage': return { usage: { prompt: ev.promptTokens, completion: ev.completionTokens } } // 覆盖式
         case 'error': return { items: [...s.items, { kind: 'error', message: ev.message }] }
         default: return {}
       }
@@ -118,6 +122,7 @@ export const createChatStore = () => {
       items: [],
       running: false,
       meta: { workspaceRoot: null, model: null },
+      usage: null,
       setMeta: (m) => commit({ meta: m }),
       applyEvent: (ev) => commit(reduce(get(), ev)),
       lastUserMessage: () => {
