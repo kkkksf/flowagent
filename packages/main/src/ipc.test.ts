@@ -14,7 +14,7 @@ type IpcHandler = (...args: unknown[]) => unknown
 
 const handlers = new Map<string, IpcHandler>()
 const wcListeners = new Map<string, () => void>()
-const state: FaState = { workspaceRoot: 'E:/w', model: 'm', hasSession: true }
+const state: FaState = { workspaceRoot: 'E:/w', model: 'm', hasSession: true, currentSession: null }
 
 function fakeWin(): BrowserWindow {
   return {

@@ -97,13 +97,13 @@ app.whenReady().then(() => {
   })
   registerIpc({
     host, win,
-    getState: () => ({ workspaceRoot, model, hasSession: existsSync(join(sessionsDir, currentFile)) }),
+    getState: () => ({ workspaceRoot, model, hasSession: existsSync(join(sessionsDir, currentFile)), currentSession: currentFile }),
     fs: fileService,
     term,
     session: {
       list: () => listSessions(sessionsDir),
       create: () => createSession(sessionsDir),
-      remove: (f) => { deleteSession(sessionsDir, f) },
+      remove: (f) => { if (f === currentFile) throw new Error('cannot delete the active session'); deleteSession(sessionsDir, f) }, // 纵深防御：renderer 置灰之外主进程同样拒绝
       onSwitch: switchSession,
     },
     onReady: () => { const h = historyOf(currentFile); if (h.length > 0) host.loadSession(h) }, // renderer 未 ready 时静默不恢复

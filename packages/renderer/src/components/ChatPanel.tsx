@@ -44,9 +44,11 @@ export function ChatPanel(): React.JSX.Element {
     fa.session.list().then(setSessions).catch(sessErr)
   }
 
-  // 契约 1：挂载载入会话列表；契约 2：自订一层 onEvent 只看 session-changed（多订阅无害）
+  // 契约 1：挂载载入会话列表，并从 getState 初始化当前会话（冷启动 main 不 emit session-changed）；
+  // 契约 2：自订一层 onEvent 只看 session-changed（多订阅无害）
   useEffect(() => {
     refresh()
+    void fa.getState().then((st) => { if (st.currentSession) setCurrent(st.currentSession) }).catch(sessErr)
     const off = fa.onEvent((ev) => {
       if (ev.type === 'session-changed') { setCurrent(ev.file); refresh() }
     })
@@ -68,7 +70,7 @@ export function ChatPanel(): React.JSX.Element {
     return () => window.removeEventListener('mousedown', onDown)
   }, [open])
 
-  // 契约 3：当前会话标题（main 启动不 emit session-changed，首切前 current 为 null → 兜底文案）
+  // 契约 3：当前会话标题（挂载 getState 初始化 current；仅 getState 未返回的瞬间走兜底文案）
   const title = sessions.find((s) => s.file === current)?.title ?? '(当前会话)'
 
   // 契约 5：删除必须经 window.confirm；返回的新列表直接覆盖（main 侧当前会话不可删）

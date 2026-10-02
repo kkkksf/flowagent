@@ -23,7 +23,7 @@ export type FaEvent =
   | { type: 'usage'; promptTokens: number; completionTokens: number }
   | { type: 'session-changed'; file: string }
 
-export interface FaState { workspaceRoot: string | null; model: string | null; hasSession: boolean }
+export interface FaState { workspaceRoot: string | null; model: string | null; hasSession: boolean; currentSession: string | null }
 
 export interface FsApi {
   read(path: string): Promise<{ content: string; mtimeMs: number }>
