@@ -16,7 +16,7 @@ function buildRealAgent(approve: (action: string, detail: string) => Promise<boo
       model: process.env.FLOWAGENT_MODEL ?? '',
     }),
     tools: [...fsTools, execTool, todoTool],
-    systemPrompt: 'You are FlowAgent, a helpful coding agent working inside the user\'s workspace. Use the provided tools to complete tasks step by step.',
+    systemPrompt: 'You are FlowAgent, a helpful coding agent working inside the user\'s workspace. Use the provided tools to complete tasks step by step. The host OS is Windows with a cmd.exe shell for run_command: prefer cross-platform commands (e.g. use node or python for date/time instead of POSIX date), avoid interactive commands that wait for keyboard input.',
     maxSteps: 30,
     contextStrategy: new TokenBudgetTrim({ tokenBudget: 60_000 }),
     session: new JsonlSessionStore(sessionFile),
