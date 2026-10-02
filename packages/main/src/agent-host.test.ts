@@ -208,4 +208,28 @@ describe('AgentHost', () => {
     await p2
     expect(loaded).toEqual([[{ role: 'user', content: 'restored' }]])
   })
+
+  it('reset throws while running and clears state when idle', async () => {
+    let release!: () => void
+    async function* gen(): AsyncGenerator<AgentEvent> {
+      yield { type: 'message-delta', text: 'x' }
+      await new Promise<void>((r) => { release = r })
+      yield { type: 'done', reason: 'completed' }
+    }
+    const { sink } = eventsOf()
+    let created = 0
+    const agent = { run: gen, stop: () => {}, loadHistory: () => {} }
+    const host = new AgentHost({ emit: sink.emit, makeAgent: () => { created++; return agent } })
+    const p = host.send('first')
+    await new Promise((r) => setTimeout(r, 10)) // 等 run 挂起在 release 上
+    expect(() => host.reset()).toThrow('busy')
+    release()
+    await p
+    host.reset()
+    const p2 = host.send('second') // reset 后惰性重建
+    await new Promise((r) => setTimeout(r, 10)) // 第二次 run 同样挂在 release 门上
+    release()
+    await p2
+    expect(created).toBe(2)
+  })
 })

@@ -79,6 +79,13 @@ export class AgentHost {
     this.agent?.stop()
   }
 
+  reset(): void {
+    // 会话切换：丢弃当前 agent 与暂存历史，下次 send 惰性重建（绑定新 session 文件由编排层负责）
+    if (this.running) throw new Error('agent is busy')
+    this.agent = null
+    this.pendingHistory = null
+  }
+
   private forward(ev: AgentEvent): void {
     switch (ev.type) {
       case 'message-delta': this.deps.emit({ type: 'message-delta', text: ev.text }); break
