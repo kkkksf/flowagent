@@ -35,8 +35,8 @@
 - 会话：聊天面板顶栏可新建/切换/删除会话（删除有确认，当前会话不可删）；
   历史会话存于 `<工作区>/.flowagent/sessions/*.jsonl`，旧版单文件会自动迁移；
   启动时恢复最近使用的会话。agent 运行中不可切换或删除会话。
-- token 用量：顶栏显示当前会话累计 prompt/completion tokens（模型端点需支持
-  stream_options.include_usage；不支持时显示 "—"）。
+- token 用量：顶栏显示最近一次请求的 prompt/completion tokens（prompt 已含全部历史；模型端点需支持
+  stream_options.include_usage，不支持时显示 "—"）。
 
 ## 架构
 

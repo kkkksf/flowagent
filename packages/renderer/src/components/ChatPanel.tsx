@@ -20,7 +20,7 @@ export function fmtAgo(mtimeMs: number): string {
 }
 
 // fa.session 调用的 rejection 统一 setNotice 兜底（同 FileTree fsErr 手法）
-const sessErr = (e: unknown): void => { useEditorStore.getState().setNotice(String(e)) }
+const sessErr = (e: unknown): void => { useEditorStore.getState().setNotice(e instanceof Error ? e.message : String(e)) }
 
 // 契约 4：列表项标题截 28 字符
 const clip = (t: string): string => (t.length > 28 ? `${t.slice(0, 28)}…` : t)

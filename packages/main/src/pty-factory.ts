@@ -10,6 +10,12 @@ export interface PtyLike {
 }
 
 export function spawnPty(opts: { cwd: string; cols: number; rows: number; shell?: string }): PtyLike {
-  const shell = opts.shell ?? (process.platform === 'win32' ? 'powershell.exe' : process.env.SHELL ?? 'bash')
-  return nodePty.spawn(shell, [], { name: 'xterm-256color', cols: opts.cols, rows: opts.rows, cwd: opts.cwd }) as unknown as PtyLike
+  const spawn = (sh: string): PtyLike =>
+    nodePty.spawn(sh, [], { name: 'xterm-256color', cols: opts.cols, rows: opts.rows, cwd: opts.cwd }) as unknown as PtyLike
+  if (opts.shell) return spawn(opts.shell) // 显式覆盖优先
+  if (process.platform === 'win32') {
+    // spec §2：首选 pwsh；node-pty 在 Windows 缺二进制时同步抛错，catch 后回退 powershell.exe
+    try { return spawn('pwsh.exe') } catch { return spawn('powershell.exe') }
+  }
+  return spawn(process.env.SHELL ?? 'bash')
 }

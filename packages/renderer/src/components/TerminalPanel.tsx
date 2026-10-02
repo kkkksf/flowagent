@@ -21,11 +21,11 @@ export function TerminalPanel({ collapsed, onToggleCollapse }: { collapsed: bool
         {exited && <button onClick={() => { void fa.term.restart() }}>重启</button>}
         {exited && <span style={{ color: '#b00' }}>已退出</span>}
       </div>
-      {!collapsed && (
-        exited
-          ? <div style={{ padding: 12, color: '#888' }}>终端已退出，点击「重启」恢复。</div>
-          : <Suspense fallback={<div style={{ padding: 8, color: '#888', fontSize: 12 }}>终端加载中…</div>}><XtermPane /></Suspense>
-      )}
+      {/* spec §3.2：折叠不卸载 XtermPane——卸载会让 main 侧 attach 返回 ''（二次 attach），展开后白屏。
+          改为高度 0 + overflow hidden 隐藏：term-data 始终有订阅者，展开状态原样恢复。 */}
+      <div style={{ height: collapsed ? 0 : '100%', overflow: 'hidden' }}>
+        <Suspense fallback={<div style={{ padding: 8, color: '#888', fontSize: 12 }}>终端加载中…</div>}><XtermPane /></Suspense>
+      </div>
     </div>
   )
 }

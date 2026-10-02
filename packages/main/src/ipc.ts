@@ -50,7 +50,10 @@ export function registerIpc(deps: {
   ipcMain.handle('fa:fs:unwatch', (_e, p: unknown) => { deps.fs.unwatch(String(p)) })
   // term/session 通道只透传：编排逻辑（busy 守卫、host.reset、目录管理）全部留在 index.ts
   ipcMain.handle('fa:term:write', (_e, d: unknown) => { deps.term.write(String(d)) })
-  ipcMain.handle('fa:term:resize', (_e, c: unknown, r: unknown) => { deps.term.resize(Number(c), Number(r)) })
+  ipcMain.handle('fa:term:resize', (_e, c: unknown, r: unknown) => {
+    const cols = Number(c); const rows = Number(r)
+    if (Number.isFinite(cols) && Number.isFinite(rows)) deps.term.resize(cols, rows) // NaN/undefined 守卫
+  })
   ipcMain.handle('fa:term:attach', (_e, c: unknown, r: unknown) => deps.term.attach(Number(c), Number(r)))
   ipcMain.handle('fa:term:restart', () => { deps.term.restart() })
   ipcMain.handle('fa:session:list', () => deps.session.list())

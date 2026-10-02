@@ -84,6 +84,8 @@ app.whenReady().then(() => {
     new JsonlSessionStore(join(sessionsDir, file)).load().flatMap((r) => (r.kind === 'message' ? [r.message] : [])))
 
   const switchSession = (file: string): void => {
+    // basename jail（同 deleteSession）：拒绝路径分隔符与上跳，防越出 sessions 目录
+    if (!file || file === '.' || file.includes('/') || file.includes('\\') || file.includes('..')) throw new Error('bad session file name')
     if (host.busy) throw new Error('agent is busy') // 第二道 busy 守卫（第一道在 renderer）
     host.reset()
     currentFile = file
@@ -102,8 +104,11 @@ app.whenReady().then(() => {
     term,
     session: {
       list: () => listSessions(sessionsDir),
-      create: () => createSession(sessionsDir),
-      remove: (f) => { if (f === currentFile) throw new Error('cannot delete the active session'); deleteSession(sessionsDir, f) }, // 纵深防御：renderer 置灰之外主进程同样拒绝
+      // busy 守卫必须放在 create 侧：ipc 的 fa:session:new 先 create 再 onSwitch（其守卫太晚），
+      // 无守卫时 busy 窗口会留下孤儿空文件，冷启动按 mtime 最新误选它。同步 handler，守卫+建文件原子。
+      create: () => { if (host.busy) throw new Error('agent is busy'); return createSession(sessionsDir) },
+      // 纵深防御：renderer 置灰之外主进程同样拒绝删当前会话；busy 窗口同样拒绝删除
+      remove: (f) => { if (f === currentFile) throw new Error('cannot delete the active session'); if (host.busy) throw new Error('agent is busy'); deleteSession(sessionsDir, f) },
       onSwitch: switchSession,
     },
     onReady: () => { const h = historyOf(currentFile); if (h.length > 0) host.loadSession(h) }, // renderer 未 ready 时静默不恢复
