@@ -9,6 +9,7 @@ export type AgentMessage =
 // Provider 接口
 export type ProviderEvent =
   | { type: 'text-delta'; text: string }
+  | { type: 'usage'; promptTokens: number; completionTokens: number } // 流末 usage 块；端点不支持时缺席
   | { type: 'result'; content: string; toolCalls: ToolCall[] }
 export interface LlmProvider {
   stream(messages: AgentMessage[], tools: ToolDefinition[]): AsyncIterable<ProviderEvent>
@@ -41,6 +42,7 @@ export type AgentEvent =
   | { type: 'tool-call'; call: ToolCall }
   | { type: 'tool-result'; call: ToolCall; result: string }
   | { type: 'step'; step: number }
+  | { type: 'usage'; promptTokens: number; completionTokens: number } // 每步 LLM 用量，纯数据可 JSON 序列化
   | { type: 'done'; reason: 'completed' | 'step-cap' | 'stopped' }
   | { type: 'error'; message: string } // message 为纯字符串：事件需可 JSON 序列化（跨 IPC/日志），不携带 Error 实例
 

@@ -169,4 +169,10 @@ describe('Agent loop', () => {
     expect(events).toContainEqual({ type: 'message-delta', text: 'He' })
     expect(events).toContainEqual({ type: 'message-delta', text: 'y' })
   })
+
+  it('forwards provider usage events to the agent event stream', async () => {
+    const p = fakeProvider([[{ type: 'usage', promptTokens: 3, completionTokens: 2 }, { type: 'result', content: 'done', toolCalls: [] }]])
+    const events = await collect(makeAgent(p).run('hi'))
+    expect(events).toContainEqual({ type: 'usage', promptTokens: 3, completionTokens: 2 })
+  })
 })

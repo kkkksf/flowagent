@@ -44,6 +44,9 @@ export class Agent {
         for await (const ev of this.cfg.provider.stream(trimmed, this.registry.list())) {
           if (ev.type === 'text-delta') {
             yield { type: 'message-delta', text: ev.text }
+          } else if (ev.type === 'usage') {
+            // 用量透传：置于 result 赋值之前，绝不落入 result 分支
+            yield { type: 'usage', promptTokens: ev.promptTokens, completionTokens: ev.completionTokens }
           } else {
             content = ev.content
             toolCalls = ev.toolCalls

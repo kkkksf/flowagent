@@ -21,6 +21,7 @@ export class OpenAICompatProvider implements LlmProvider {
     const body = {
       model: this.cfg.model,
       stream: true,
+      stream_options: { include_usage: true }, // 请求流末 usage 块；不支持的端点会忽略，优雅降级
       messages: messages.map(toOpenAiMessage),
       tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } })),
     }
@@ -57,8 +58,12 @@ export class OpenAICompatProvider implements LlmProvider {
     for await (const data of parseSse(res.body)) {
       sawData = true
       if (data === '[DONE]') break
-      let delta: OpenAiDelta
-      try { delta = (JSON.parse(data) as { choices: { delta: OpenAiDelta }[] }).choices[0]?.delta ?? {} } catch { continue }
+      let obj: { choices?: { delta: OpenAiDelta }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } }
+      try { obj = JSON.parse(data) } catch { continue }
+      if (obj.usage && typeof obj.usage.prompt_tokens === 'number') {
+        yield { type: 'usage', promptTokens: obj.usage.prompt_tokens, completionTokens: obj.usage.completion_tokens ?? 0 }
+      }
+      const delta = obj.choices?.[0]?.delta ?? {}
       if (delta.content) { content += delta.content; yield { type: 'text-delta', text: delta.content } }
       for (const tc of delta.tool_calls ?? []) {
         const slot = (calls[tc.index] ??= { id: '', name: '', arguments: '' })

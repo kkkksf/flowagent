@@ -120,6 +120,42 @@ describe('OpenAICompatProvider.stream', () => {
   })
 })
 
+describe('usage accounting', () => {
+  it('parses usage chunk and requests include_usage', async () => {
+    const { OpenAICompatProvider } = await import('./openai.js')
+    let capturedBody = ''
+    const sse = sseResponse([
+      'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n',
+      'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":5}}\n\n',
+      'data: [DONE]\n\n',
+    ])
+    const p = new OpenAICompatProvider({
+      baseURL: 'http://x', apiKey: 'k', model: 'm', maxRetries: 0, backoffMs: 1,
+      fetchImpl: (async (_u: unknown, init?: RequestInit) => {
+        capturedBody = String(init?.body)
+        return sse
+      }) as unknown as typeof fetch,
+    })
+    const events: Array<{ type: string; promptTokens?: number; completionTokens?: number }> = []
+    for await (const ev of p.stream([{ role: 'user', content: 'q' }], [])) events.push(ev as never)
+    expect(capturedBody).toContain('"stream_options":{"include_usage":true}')
+    expect(events.map((e) => e.type)).toEqual(['text-delta', 'usage', 'result'])
+    expect(events[1]).toEqual({ type: 'usage', promptTokens: 10, completionTokens: 5 })
+  })
+
+  it('no usage in stream yields no usage event', async () => {
+    const { OpenAICompatProvider } = await import('./openai.js')
+    const sse = sseResponse([
+      'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n',
+      'data: [DONE]\n\n',
+    ])
+    const p = new OpenAICompatProvider({ baseURL: 'http://x', apiKey: 'k', model: 'm', maxRetries: 0, backoffMs: 1, fetchImpl: (async () => sse) as unknown as typeof fetch })
+    const events: string[] = []
+    for await (const ev of p.stream([{ role: 'user', content: 'q' }], [])) events.push(ev.type)
+    expect(events).not.toContain('usage')
+  })
+})
+
 describe('non-SSE response guards', () => {
   const body = (text: string, contentType: string) =>
     new Response(text, { status: 200, headers: { 'content-type': contentType } })
