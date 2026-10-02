@@ -2,6 +2,8 @@ import { ipcMain } from 'electron'
 import type { BrowserWindow } from 'electron'
 import type { AgentHost } from './agent-host.js'
 import type { FileService } from './file-service.js'
+import type { TerminalService } from './terminal-service.js'
+import type { SessionMeta } from './session-service.js'
 import type { FaEvent, FaState } from './protocol.js'
 
 export function registerIpc(deps: {
@@ -9,6 +11,8 @@ export function registerIpc(deps: {
   win: BrowserWindow
   getState(): FaState
   fs: FileService
+  term: TerminalService
+  session: { list(): SessionMeta[]; create(): SessionMeta; remove(file: string): void; onSwitch(file: string): void }
   onReady?: () => void
 }): { send: (ev: FaEvent) => void } {
   const send = (ev: FaEvent) => {
@@ -44,5 +48,21 @@ export function registerIpc(deps: {
     deps.fs.write(String(p), String(c), typeof m === 'number' ? m : undefined))
   ipcMain.handle('fa:fs:watch', (_e, p: unknown) => { deps.fs.watch(String(p)) })
   ipcMain.handle('fa:fs:unwatch', (_e, p: unknown) => { deps.fs.unwatch(String(p)) })
+  // term/session 通道只透传：编排逻辑（busy 守卫、host.reset、目录管理）全部留在 index.ts
+  ipcMain.handle('fa:term:write', (_e, d: unknown) => { deps.term.write(String(d)) })
+  ipcMain.handle('fa:term:resize', (_e, c: unknown, r: unknown) => { deps.term.resize(Number(c), Number(r)) })
+  ipcMain.handle('fa:term:attach', (_e, c: unknown, r: unknown) => deps.term.attach(Number(c), Number(r)))
+  ipcMain.handle('fa:term:restart', () => { deps.term.restart() })
+  ipcMain.handle('fa:session:list', () => deps.session.list())
+  ipcMain.handle('fa:session:new', () => {
+    const meta = deps.session.create()
+    deps.session.onSwitch(meta.file)
+    return meta
+  })
+  ipcMain.handle('fa:session:switch', (_e, f: unknown) => { deps.session.onSwitch(String(f)) })
+  ipcMain.handle('fa:session:delete', (_e, f: unknown) => {
+    deps.session.remove(String(f))
+    return deps.session.list()
+  })
   return { send }
 }

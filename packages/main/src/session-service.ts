@@ -1,10 +1,12 @@
 import { existsSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import type { SessionMeta } from './protocol.js'
 
 // 多会话数据层：.flowagent/sessions/*.jsonl 的列出/新建/删除/旧版迁移。
 // 纯 node:fs 同步实现（文件量个位数，无并发诉求）；供 Task 5 编排层消费。
-export interface SessionMeta { file: string; title: string; mtimeMs: number }
+// SessionMeta 规范定义在 protocol.ts（renderer 契约，见彼处注释），此处再导出保持既有消费路径
+export type { SessionMeta }
 
 const EMPTY_TITLE = '(空会话)'
 
@@ -35,10 +37,15 @@ export function listSessions(dir: string): SessionMeta[] {
 export function createSession(dir: string): SessionMeta {
   // toISOString 给 YYYY-MM-DDTHH:mm:ss：冒号在 Windows 文件名非法，剔除成 YYYY-MM-DDTHHmmss
   const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '')
-  const file = `${ts}-${randomUUID().slice(0, 4)}.jsonl` // 4 位 hex 防同秒冲突
-  const full = join(dir, file)
-  writeFileSync(full, '', 'utf8')
-  return { file, title: EMPTY_TITLE, mtimeMs: statSync(full).mtimeMs }
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const file = `${ts}-${randomUUID().slice(0, 4)}.jsonl` // 4 位 hex 防同秒冲突
+    const full = join(dir, file)
+    // existsSync 重试（Task 4 review 移交）：同秒碰撞若直接 writeFileSync 会截断既有会话，换后缀重试
+    if (existsSync(full)) continue
+    writeFileSync(full, '', 'utf8')
+    return { file, title: EMPTY_TITLE, mtimeMs: statSync(full).mtimeMs }
+  }
+  throw new Error(`createSession: name collision persisted after 5 attempts in ${dir}`)
 }
 
 export function deleteSession(dir: string, file: string): void {

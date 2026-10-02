@@ -1,14 +1,19 @@
 import { app, BrowserWindow, dialog, shell } from 'electron'
 import { existsSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { Agent, OpenAICompatProvider, fsTools, execTool, todoTool, JsonlSessionStore, TokenBudgetTrim, repairDanglingToolCalls } from 'agent-core'
 import { AgentHost } from './agent-host.js'
 import { registerIpc } from './ipc.js'
 import { FileService } from './file-service.js'
+import { TerminalService } from './terminal-service.js'
+import { listSessions, createSession, deleteSession, migrateLegacy } from './session-service.js'
+import { spawnPty } from './pty-factory.js'
 import { loadSettings, saveSettings } from './settings.js'
 import type { FaEvent } from './protocol.js'
 
-function buildRealAgent(approve: (action: string, detail: string) => Promise<boolean>, workspaceRoot: string, sessionFile: string): Agent {
+// sessionFile 为惰性求值：agent 在 host.send 内惰性创建，届时才绑定当前会话文件——
+// 切会话只需 host.reset() 丢弃旧 agent，无需重建 host（M4 多会话）
+function buildRealAgent(approve: (action: string, detail: string) => Promise<boolean>, workspaceRoot: string, sessionFile: () => string): Agent {
   return new Agent({
     provider: new OpenAICompatProvider({
       baseURL: process.env.FLOWAGENT_BASE_URL ?? '',
@@ -19,7 +24,7 @@ function buildRealAgent(approve: (action: string, detail: string) => Promise<boo
     systemPrompt: 'You are FlowAgent, a helpful coding agent working inside the user\'s workspace. Use the provided tools to complete tasks step by step. The host OS is Windows with a cmd.exe shell for run_command: prefer cross-platform commands (e.g. use node or python for date/time instead of POSIX date), avoid interactive commands that wait for keyboard input.',
     maxSteps: 30,
     contextStrategy: new TokenBudgetTrim({ tokenBudget: 60_000 }),
-    session: new JsonlSessionStore(sessionFile),
+    session: new JsonlSessionStore(sessionFile()),
     workspaceRoot,
     approve,
   })
@@ -34,9 +39,6 @@ app.whenReady().then(() => {
     workspaceRoot = picked[0]
     saveSettings(settingsFile, { workspaceRoot })
   }
-  const sessionFile = join(workspaceRoot, '.flowagent', 'session.jsonl')
-  // appendFileSync 不会创建父目录：首次落盘前必须先建 .flowagent/（M1 CLI 同款处理）
-  mkdirSync(dirname(sessionFile), { recursive: true })
   const model = process.env.FLOWAGENT_MODEL ?? null
 
   const win = new BrowserWindow({
@@ -58,25 +60,55 @@ app.whenReady().then(() => {
     void shell.openExternal(url).catch(() => {})
   })
 
-  // 会话记录启动时读出；恢复动作延迟到渲染端 fa:ready——webContents.send 不缓存无监听者的消息，过早 emit 会丢
-  const history = new JsonlSessionStore(sessionFile).load()
-    .flatMap((r) => (r.kind === 'message' ? [r.message] : []))
+  // 会话恢复动作延迟到渲染端 fa:ready——webContents.send 不缓存无监听者的消息，过早 emit 会丢
   const emit = (ev: FaEvent): void => { if (!win.isDestroyed()) win.webContents.send('fa:event', ev) }
   const fileService = new FileService(workspaceRoot!, {
     onFileChanged: (p) => emit({ type: 'file-changed', path: p }),
     onWatchError: (p) => emit({ type: 'file-watch-error', path: p }),
   })
+
+  // —— 多会话编排（M4）——
+  const sessionsDir = join(workspaceRoot!, '.flowagent', 'sessions')
+  mkdirSync(sessionsDir, { recursive: true })            // Task 4 移交：编排层建目录
+  migrateLegacy(sessionsDir)
+  let currentFile = listSessions(sessionsDir)[0]?.file ?? createSession(sessionsDir).file // mtime 最新；无则新建
+
+  const term = new TerminalService({
+    spawnPty,
+    onChunk: (d) => emit({ type: 'term-data', data: d }),
+    onExit: () => emit({ type: 'term-exit' }),
+  })
+  term.start(workspaceRoot!)
+
+  const historyOf = (file: string) => repairDanglingToolCalls(
+    new JsonlSessionStore(join(sessionsDir, file)).load().flatMap((r) => (r.kind === 'message' ? [r.message] : [])))
+
+  const switchSession = (file: string): void => {
+    if (host.busy) throw new Error('agent is busy') // 第二道 busy 守卫（第一道在 renderer）
+    host.reset()
+    currentFile = file
+    host.loadSession(historyOf(file))   // emit history（renderer 全量替换）+ 下次 send 绑定新文件
+    emit({ type: 'session-changed', file })
+  }
+
   const host = new AgentHost({
     emit,
-    makeAgent: (approve) => buildRealAgent(approve, workspaceRoot!, sessionFile),
+    makeAgent: (approve) => buildRealAgent(approve, workspaceRoot!, () => join(sessionsDir, currentFile)),
   })
   registerIpc({
     host, win,
-    getState: () => ({ workspaceRoot, model, hasSession: existsSync(sessionFile) }),
+    getState: () => ({ workspaceRoot, model, hasSession: existsSync(join(sessionsDir, currentFile)) }),
     fs: fileService,
-    onReady: () => { if (history.length > 0) host.loadSession(repairDanglingToolCalls(history)) }, // renderer 未 ready 时静默不恢复
+    term,
+    session: {
+      list: () => listSessions(sessionsDir),
+      create: () => createSession(sessionsDir),
+      remove: (f) => { deleteSession(sessionsDir, f) },
+      onSwitch: switchSession,
+    },
+    onReady: () => { const h = historyOf(currentFile); if (h.length > 0) host.loadSession(h) }, // renderer 未 ready 时静默不恢复
   })
-  // 关窗：挂起审批按拒绝收场（host.stop 内含），watcher 全部释放，进程干净退出
-  win.on('closed', () => { host.stop(); fileService.unwatchAll() })
+  // 关窗：挂起审批按拒绝收场（host.stop 内含），watcher 全部释放，pty 关停，进程干净退出
+  win.on('closed', () => { host.stop(); fileService.unwatchAll(); term.kill() })
 })
 app.on('window-all-closed', () => { app.quit() })

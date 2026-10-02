@@ -2,6 +2,10 @@ import type { AgentMessage, ToolCall, ApprovalPayload } from 'agent-core'
 
 export type { AgentMessage, ToolCall, ApprovalPayload } // renderer 统一从此处 type-only 导入，不直接依赖 agent-core
 
+// SessionMeta 定义在此（而非自 session-service 再导出）：renderer tsc 顺着 protocol 的 import
+// 链检查源文件，session-service.ts 的 node:fs 依赖会拖垮无 node 类型的 renderer 程序
+export interface SessionMeta { file: string; title: string; mtimeMs: number }
+
 export type FaEvent =
   | { type: 'history'; messages: AgentMessage[] }
   | { type: 'message-delta'; text: string }
@@ -14,6 +18,10 @@ export type FaEvent =
   | { type: 'file-watch-error'; path: string }
   | { type: 'agent-idle' }
   | { type: 'error'; message: string }
+  | { type: 'term-data'; data: string }
+  | { type: 'term-exit' }
+  | { type: 'usage'; promptTokens: number; completionTokens: number }
+  | { type: 'session-changed'; file: string }
 
 export interface FaState { workspaceRoot: string | null; model: string | null; hasSession: boolean }
 
@@ -36,5 +44,7 @@ export interface FaApi {
   respondApproval(id: string, allow: boolean): Promise<void>
   setAutoApprove(v: boolean): Promise<void>
   fs: FsApi
+  term: { write(d: string): Promise<void>; resize(c: number, r: number): Promise<void>; attach(c: number, r: number): Promise<string>; restart(): Promise<void> }
+  session: { list(): Promise<SessionMeta[]>; new(): Promise<SessionMeta>; switch(file: string): Promise<void>; delete(file: string): Promise<SessionMeta[]> }
   onEvent(cb: (ev: FaEvent) => void): () => void
 }

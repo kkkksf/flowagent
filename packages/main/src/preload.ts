@@ -19,6 +19,18 @@ contextBridge.exposeInMainWorld('fa', {
     watch: (path: string) => ipcRenderer.invoke('fa:fs:watch', path),
     unwatch: (path: string) => ipcRenderer.invoke('fa:fs:unwatch', path),
   },
+  term: {
+    write: (d: string) => ipcRenderer.invoke('fa:term:write', d),
+    resize: (c: number, r: number) => ipcRenderer.invoke('fa:term:resize', c, r),
+    attach: (c: number, r: number) => ipcRenderer.invoke('fa:term:attach', c, r),
+    restart: () => ipcRenderer.invoke('fa:term:restart'),
+  },
+  session: {
+    list: () => ipcRenderer.invoke('fa:session:list'),
+    new: () => ipcRenderer.invoke('fa:session:new'),
+    switch: (file: string) => ipcRenderer.invoke('fa:session:switch', file),
+    delete: (file: string) => ipcRenderer.invoke('fa:session:delete', file),
+  },
   onEvent: (cb: (ev: FaEvent) => void) => {
     const listener = (_e: unknown, ev: FaEvent) => cb(ev)
     ipcRenderer.on('fa:event', listener)

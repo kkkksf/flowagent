@@ -92,6 +92,7 @@ export class AgentHost {
       case 'assistant-message': this.deps.emit({ type: 'assistant-done' }); break
       case 'tool-call': this.deps.emit({ type: 'tool-call', call: ev.call }); break
       case 'tool-result': this.deps.emit({ type: 'tool-result', id: ev.call.id, result: ev.result }); break
+      case 'usage': this.deps.emit({ type: 'usage', promptTokens: ev.promptTokens, completionTokens: ev.completionTokens }); break
       case 'error': this.deps.emit({ type: 'error', message: ev.message }); break
       default: break // step / done 不透传给 UI
     }
