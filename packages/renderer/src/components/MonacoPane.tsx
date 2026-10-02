@@ -31,7 +31,7 @@ export function MonacoPane(): React.JSX.Element {
 
   useEffect(() => { // 激活/内容变化 → 绑定对应 model（仅 file 标签；每 path 一个 model，切标签复用）
     if (!editorRef.current || !activeFile || activeFile.kind !== 'file') return
-    const uri = monaco.Uri.parse('inmemory:///' + encodeURI(activeFile.path))
+    const uri = monaco.Uri.parse('inmemory:///' + activeFile.path.split('/').map(encodeURIComponent).join('/'))
     let model = monaco.editor.getModel(uri)
     if (!model) model = monaco.editor.createModel(activeFile.content, undefined, uri)
     else if (model.getValue() !== activeFile.content && !activeFile.dirty) model.setValue(activeFile.content)

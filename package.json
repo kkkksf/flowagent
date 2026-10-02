@@ -2,6 +2,15 @@
   "name": "flowagent",
   "private": true,
   "type": "module",
-  "scripts": { "test": "pnpm -r test" },
-  "pnpm": { "onlyBuiltDependencies": ["electron"] }
+  "scripts": {
+    "test": "pnpm -r test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ],
+    "patchedDependencies": {
+      "node-pty@1.1.0": "patches/node-pty@1.1.0.patch"
+    }
+  }
 }
