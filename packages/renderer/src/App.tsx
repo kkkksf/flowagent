@@ -4,7 +4,7 @@ import { fa } from './api/fa.js'
 import { useStore } from './store.js'
 import { useEditorStore } from './editor-store-instance.js'
 import { applyEditorEvent, openFileFromDisk } from './editor-events.js'
-import { ChatPanel } from './components/ChatPanel.js'
+import { ChatPanel, fmtTokens } from './components/ChatPanel.js'
 import { Composer } from './components/Composer.js'
 import { FileTree } from './components/FileTree.js'
 import { EditorArea } from './components/EditorArea.js'
@@ -12,6 +12,7 @@ import { TerminalPanel } from './components/TerminalPanel.js'
 
 export function App(): React.JSX.Element {
   const meta = useStore((s) => s.meta)
+  const usage = useStore((s) => s.usage)
   // 折叠状态提升到 App：左栏容器宽度随之 240px ↔ 32px，消除折叠后 208px 死区（Task 6 遗留）
   const [treeCollapsed, setTreeCollapsed] = useState(false)
   // 终端面板折叠只卸载 XtermPane 前端实例，pty 归 main 管理继续后台跑
@@ -31,6 +32,10 @@ export function App(): React.JSX.Element {
           {meta.workspaceRoot ?? '未选择工作区'}
         </span>
         <span style={{ color: '#999' }}>{meta.model ?? '模型未配置'}</span>
+        {/* 单次请求 usage 覆盖式（chat-store），切会话重置为 — */}
+        <span style={{ color: '#999' }} title="prompt / completion tokens">
+          {usage ? `${fmtTokens(usage.prompt)} / ${fmtTokens(usage.completion)} tokens` : '—'}
+        </span>
       </header>
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         <div style={{ width: treeCollapsed ? 32 : 240, borderRight: '1px solid #ddd', overflowY: 'auto', flexShrink: 0, transition: 'width 0.15s' }}>

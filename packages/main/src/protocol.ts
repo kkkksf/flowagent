@@ -45,6 +45,7 @@ export interface FaApi {
   setAutoApprove(v: boolean): Promise<void>
   fs: FsApi
   term: { write(d: string): Promise<void>; resize(c: number, r: number): Promise<void>; attach(c: number, r: number): Promise<string>; restart(): Promise<void> }
-  session: { list(): Promise<SessionMeta[]>; new(): Promise<SessionMeta>; switch(file: string): Promise<void>; delete(file: string): Promise<SessionMeta[]> }
+  // 'new' 必须加引号：类型字面量里裸 new() 是构造签名而非方法名，fa.session.new 会类型不可达
+  session: { list(): Promise<SessionMeta[]>; 'new'(): Promise<SessionMeta>; switch(file: string): Promise<void>; delete(file: string): Promise<SessionMeta[]> }
   onEvent(cb: (ev: FaEvent) => void): () => void
 }
