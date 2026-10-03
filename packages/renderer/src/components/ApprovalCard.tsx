@@ -24,21 +24,22 @@ export function ApprovalCard({ item }: { item: Extract<ChatItem, { kind: 'approv
   }, [payloadPath])
   const done = item.resolved !== null
   return (
-    <div style={{ border: '2px solid #f0ad4e', borderRadius: 8, padding: 10, margin: '8px 0' }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontFamily: 'monospace' }}>
-        <strong>{item.action}</strong>
-        <span>{payload ? payloadPath : item.detail.split('\n')[0]}</span>
-        {payload && <span style={{ color: '#999' }}>{diffStats(payload, original)}</span>}
+    <div className="my-2 bg-surface-1 border-l-2 border-warning rounded-lg p-2.5">
+      <div className="flex gap-2 items-baseline font-mono text-xs">
+        <strong className="font-semibold shrink-0">{item.action}</strong>
+        <span className="min-w-0 truncate">{payload ? payloadPath : item.detail.split('\n')[0]}</span>
+        {/* diffStats 返回整串（含「替换/覆盖/新文件」前缀），整体次级色显示，不拆色 */}
+        {payload && <span className="text-ink-secondary shrink-0">{diffStats(payload, original)}</span>}
       </div>
       {done ? (
-        <span style={{ color: '#666' }}>已{item.resolved === 'allowed' ? '允许' : '拒绝'}</span>
+        <span className="text-xs text-ink-secondary">已{item.resolved === 'allowed' ? '允许' : '拒绝'}</span>
       ) : (
-        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+        <div className="mt-1.5 flex gap-2">
           {payload && payloadPath && (
-            <button onClick={() => useEditorStore.getState().openDiff(item.id, payloadPath, original, buildDiffModified(payload, original))}>查看 diff</button>
+            <button className="h-6 px-2.5 rounded-md border border-border text-xs hover:bg-surface-3" onClick={() => useEditorStore.getState().openDiff(item.id, payloadPath, original, buildDiffModified(payload, original))}>查看 diff</button>
           )}
-          <button onClick={() => requestApproval(item.id, true, payloadPath)}>✓ 允许</button>
-          <button onClick={() => requestApproval(item.id, false)}>✗ 拒绝</button>
+          <button className="h-6 px-2.5 rounded-md bg-accent text-on-accent text-xs hover:bg-accent-hover" onClick={() => requestApproval(item.id, true, payloadPath)}>✓ 允许</button>
+          <button className="h-6 px-2.5 rounded-md border border-danger text-danger text-xs hover:bg-surface-3" onClick={() => requestApproval(item.id, false)}>✗ 拒绝</button>
         </div>
       )}
     </div>

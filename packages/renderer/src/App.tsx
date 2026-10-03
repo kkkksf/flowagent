@@ -179,26 +179,28 @@ export function App(): React.JSX.Element {
           </div>
           <TerminalPanel collapsed={termCollapsed} onToggleCollapse={() => setTermCollapsed((v) => !v)} />
         </div>
-        <div className={`${chatCollapsed ? 'w-9' : 'w-[420px]'} border-l border-border-subtle flex flex-col min-h-0 shrink-0 transition-all duration-150`}>
-          {chatCollapsed ? (
-            /* 折叠竖条：36px 宽，仅展开按钮 */
-            <div className="w-9 flex justify-center pt-2">
+        {/* 聊天栏持久挂载（Task 4 裁定 carry 项）：折叠只收外层宽度并裁掉内容层，ChatPanel/Composer
+            不卸载 → Composer 草稿与消息流在折叠/展开间原样保留；折叠竖条仍只显示展开按钮 */}
+        <div className={(chatCollapsed ? 'w-9' : 'w-[420px]') + ' border-l border-border-subtle shrink-0 transition-all duration-150 overflow-hidden flex flex-col min-h-0'}>
+          {chatCollapsed && (
+            /* 折叠竖条：36px 宽，恰在裁剪框内不被裁掉，仅展开按钮 */
+            <div className="w-9 flex justify-center pt-2 shrink-0">
               <button type="button" title="展开聊天" onClick={() => setChatCollapsed(false)} className="h-6 w-6 flex items-center justify-center rounded-md text-ink-secondary hover:bg-surface-3">
                 <PanelRight size={14} />
               </button>
             </div>
-          ) : (
-            <>
-              {/* 折叠柄：聊天栏顶部一行，按钮反向（收起） */}
-              <div className="h-7 flex items-center justify-end px-1.5">
-                <button type="button" title="收起聊天" onClick={() => setChatCollapsed(true)} className="h-6 w-6 flex items-center justify-center rounded-md text-ink-secondary hover:bg-surface-3">
-                  <PanelRight size={14} />
-                </button>
-              </div>
-              <ChatPanel />
-              <Composer />
-            </>
           )}
+          {/* 内容层定宽 420px 常驻（折叠时被 overflow-hidden 裁掉；invisible 仅停止绘制，不卸载） */}
+          <div className={'w-[420px] flex-1 flex flex-col min-h-0' + (chatCollapsed ? ' invisible' : '')}>
+            {/* 折叠柄：聊天栏顶部一行，按钮反向（收起） */}
+            <div className="h-7 flex items-center justify-end px-1.5 shrink-0">
+              <button type="button" title="收起聊天" onClick={() => setChatCollapsed(true)} className="h-6 w-6 flex items-center justify-center rounded-md text-ink-secondary hover:bg-surface-3">
+                <PanelRight size={14} />
+              </button>
+            </div>
+            <ChatPanel />
+            <Composer />
+          </div>
         </div>
       </div>
     </div>

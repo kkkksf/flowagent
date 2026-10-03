@@ -12,6 +12,7 @@ export function fmtTokens(n: number): string {
 export function ChatPanel(): React.JSX.Element {
   const items = useStore((s) => s.items)
   const model = useStore((s) => s.meta.model)
+  const running = useStore((s) => s.running)
   const ref = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
   useEffect(() => {
@@ -30,11 +31,21 @@ export function ChatPanel(): React.JSX.Element {
         className="flex-1 overflow-y-auto p-4"
       >
         {items.length === 0 && (
-          <div className="text-ink-faint text-center mt-20">
-            {model ? '给 FlowAgent 发个任务试试，例如：写一个 hello.py 并运行。' : '模型未配置，请设置 FLOWAGENT_BASE_URL / FLOWAGENT_API_KEY / FLOWAGENT_MODEL 环境变量后重启。'}
+          <div className="mt-20 flex flex-col items-center gap-3 text-center">
+            <div className="w-10 h-10 rounded-lg bg-accent/15 flex items-center justify-center"><div className="w-5 h-5 rounded bg-accent" /></div>
+            <div className="text-ink-secondary">
+              {model ? '给 FlowAgent 发个任务试试，例如：写一个 hello.py 并运行。' : '模型未配置，请设置 FLOWAGENT_BASE_URL / FLOWAGENT_API_KEY / FLOWAGENT_MODEL 环境变量后重启。'}
+            </div>
           </div>
         )}
         {items.map((it, i) => <MessageItem key={i} item={it} />)}
+        {/* 运行呼吸点：仅在已有消息时追加在流底部（空状态由上方占位） */}
+        {running && items.length > 0 && (
+          <div className="flex items-center gap-2 py-1.5 text-xs text-ink-secondary">
+            <span className="flex gap-1"><span className="fa-dot" /><span className="fa-dot" /><span className="fa-dot" /></span>
+            正在处理…
+          </div>
+        )}
       </div>
     </div>
   )
