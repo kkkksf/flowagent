@@ -25,4 +25,8 @@ describe('renderer 源码禁止裸色值（.tsx；色板只许在 themes.ts/inde
     }
     expect(offenders).toEqual([])
   })
+
+  it('allowlist 已清空（迁移完成）', () => {
+    expect(LEGACY_FILES.size).toBe(0)
+  })
 })
