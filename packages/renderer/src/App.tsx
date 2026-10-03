@@ -97,7 +97,7 @@ function SessionPicker(): React.JSX.Element {
               <div
                 key={s.file}
                 className={`fa-sess-row flex items-center gap-2 px-2.5 h-7 cursor-pointer text-xs${cur ? ' bg-surface-3' : ''}`}
-                onClick={() => { if (!running) { void fa.session.switch(s.file).catch(sessErr); setOpen(false) } }}
+                onClick={(e) => { e.stopPropagation(); if (!running) { void fa.session.switch(s.file).catch(sessErr); setOpen(false) } }}
               >
                 <span className="flex-1 min-w-0 truncate">{clip(s.title)}</span>
                 <span className="text-ink-faint shrink-0">{fmtAgo(s.mtimeMs)}</span>
@@ -116,7 +116,7 @@ function SessionPicker(): React.JSX.Element {
           {/* 契约 6：+ 新会话（main 自动切换并 emit session-changed + history） */}
           <div
             className="fa-sess-row flex items-center gap-1.5 px-2.5 h-7 text-accent cursor-pointer text-xs"
-            onClick={() => { if (!running) { void fa.session.new().catch(sessErr); setOpen(false) } }}
+            onClick={(e) => { e.stopPropagation(); if (!running) { void fa.session.new().catch(sessErr); setOpen(false) } }}
           >
             <Plus size={12} />新会话
           </div>
