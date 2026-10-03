@@ -94,5 +94,7 @@ body {
 .fa-tree-row:hover, .fa-sess-row:hover { background: var(--color-surface-3); }
 .fa-sess-del { opacity: 0; } .fa-sess-row:hover .fa-sess-del { opacity: 1; }
 
-/* lucide 图标默认尺寸对齐 */
-svg.lucide { width: 14px; height: 14px; }
+/* lucide 图标默认尺寸对齐（包进 base 层，使工具类与 lucide size 属性可覆盖默认值） */
+@layer base {
+  svg.lucide { width: 14px; height: 14px; }
+}

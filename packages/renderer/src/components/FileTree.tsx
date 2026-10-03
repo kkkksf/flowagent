@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronRight, File, Folder, FolderOpen, PanelLeftClose, PanelLeftOpen, RotateCw, X } from 'lucide-react'
 import { fa } from '../api/fa.js'
 import { useEditorStore } from '../editor-store-instance.js'
 import { openFileFromDisk } from '../editor-events.js'
@@ -46,20 +47,6 @@ function findNode(nodes: TreeNode[], path: string): TreeNode | undefined {
 
 // 契约 9：所有 fa.fs 调用的 rejection 统一 setNotice 兜底
 const fsErr = (e: unknown): void => { useEditorStore.getState().setNotice(String(e)) }
-
-const rowStyle = (depth: number): React.CSSProperties => ({
-  paddingLeft: 4 + depth * 16,
-  paddingRight: 4,
-  lineHeight: '24px',
-  fontSize: 13,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-  userSelect: 'none',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-})
-
-const iconBtn: React.CSSProperties = { border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px', lineHeight: '16px', color: '#555' }
 
 // 折叠状态由 App 持有（左栏容器宽度随之 240px ↔ 32px），FileTree 只负责渲染窄条/树体
 export interface FileTreeProps {
@@ -178,7 +165,7 @@ export function FileTree({ onOpenFile = openFileFromDisk, collapsed, onToggleCol
   }
 
   const renderInput = (depth: number): React.JSX.Element => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 2, paddingLeft: 4 + depth * 16, lineHeight: '24px', fontSize: 13 }}>
+    <div className="flex items-center gap-1 h-[26px] text-[13px]" style={{ paddingLeft: 4 + depth * 16 }}>
       <input
         ref={inputRef}
         value={pendingValue}
@@ -187,10 +174,10 @@ export function FileTree({ onOpenFile = openFileFromDisk, collapsed, onToggleCol
           if (e.key === 'Enter') confirmPending()
           if (e.key === 'Escape') setPending(null)
         }}
-        style={{ flex: 1, minWidth: 0, fontSize: 12, lineHeight: '18px', padding: '1px 4px', boxSizing: 'border-box' }}
+        className="flex-1 min-w-0 h-5 px-1.5 text-xs bg-surface-0 border border-border rounded-md focus:outline-none focus:border-accent"
       />
-      <button type="button" title="确认" style={iconBtn} onClick={confirmPending}>✓</button>
-      <button type="button" title="取消" style={iconBtn} onClick={() => setPending(null)}>×</button>
+      <button type="button" title="确认" className="flex items-center justify-center h-5 w-5 rounded text-ink-faint hover:bg-surface-3 hover:text-ink" onClick={confirmPending}><Check size={12} /></button>
+      <button type="button" title="取消" className="flex items-center justify-center h-5 w-5 rounded text-ink-faint hover:bg-surface-3 hover:text-ink" onClick={() => setPending(null)}><X size={12} /></button>
     </div>
   )
 
@@ -207,18 +194,27 @@ export function FileTree({ onOpenFile = openFileFromDisk, collapsed, onToggleCol
       rows.push(
         <div key={node.path}>
           <div
-            className="fa-tree-row"
-            style={rowStyle(depth)}
+            className="fa-tree-row flex items-center h-[26px] cursor-pointer select-none truncate text-[13px] hover:bg-surface-3"
+            style={{ paddingLeft: 4 + depth * 16 }}
             onClick={() => (node.isDir ? onDirClick(node) : onOpenFile(node.path))}
             onContextMenu={(e) => {
               e.preventDefault()
               setMenu({ x: Math.min(e.clientX, window.innerWidth - 150), y: Math.min(e.clientY, window.innerHeight - 130), node })
             }}
           >
-            {node.isDir && <span style={{ marginRight: 4 }}>{node.expanded ? '📂' : '📁'}</span>}
+            {node.isDir ? (
+              <>
+                <ChevronRight size={12} className={'shrink-0 mr-1 text-ink-faint transition-transform duration-150 ' + (node.expanded ? 'rotate-90' : '')} />
+                {node.expanded
+                  ? <FolderOpen size={14} className="shrink-0 mr-1 text-ink-secondary" />
+                  : <Folder size={14} className="shrink-0 mr-1 text-ink-secondary" />}
+              </>
+            ) : (
+              <File size={14} className="ml-[18px] shrink-0 mr-1 text-ink-faint" />
+            )}
             {node.name}
             {/* 契约 8：agentTouched 路径节点名旁小圆点 */}
-            {agentTouched.includes(node.path) && <span style={{ color: '#1a73e8', marginLeft: 4 }}>●</span>}
+            {agentTouched.includes(node.path) && <span className="ml-1 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />}
           </div>
           {node.isDir && node.expanded && node.children && renderList(node.children, depth + 1, node.path)}
         </div>,
@@ -230,7 +226,7 @@ export function FileTree({ onOpenFile = openFileFromDisk, collapsed, onToggleCol
   if (collapsed) {
     return (
       <div style={{ width: '100%', minHeight: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4 }}>
-        <button type="button" title="展开文件树" style={iconBtn} onClick={onToggleCollapse}>»</button>
+        <button type="button" title="展开文件树" className="flex items-center justify-center h-6 w-6 rounded-md text-ink-faint hover:bg-surface-3 hover:text-ink" onClick={onToggleCollapse}><PanelLeftOpen size={14} /></button>
       </div>
     )
   }
@@ -238,8 +234,7 @@ export function FileTree({ onOpenFile = openFileFromDisk, collapsed, onToggleCol
   const menuItem = (label: string, action: () => void): React.JSX.Element => (
     <div
       key={label}
-      className="fa-tree-row"
-      style={{ padding: '2px 12px', fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}
+      className="fa-tree-row px-3 h-7 flex items-center cursor-pointer whitespace-nowrap text-[13px] hover:bg-surface-3"
       onClick={() => { setMenu(null); action() }}
     >
       {label}
@@ -248,26 +243,25 @@ export function FileTree({ onOpenFile = openFileFromDisk, collapsed, onToggleCol
 
   return (
     <div style={{ width: '100%', minHeight: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-      {/* hover 背景 #f0f0f0（行与菜单项共用） */}
-      <style>{'.fa-tree-row:hover{background:#f0f0f0}'}</style>
-      {/* 契约 10：标题 + ⟳ 刷新；« 折叠为 32px 窄条 */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 4px 2px 10px', borderBottom: '1px solid #eee', fontSize: 12, color: '#555', flexShrink: 0 }}>
+      {/* 契约 10：标题 + 刷新；折叠为 32px 窄条（hover 背景由 index.css 的 .fa-tree-row:hover 提供） */}
+      <div className="sticky top-0 z-10 bg-surface-0 flex items-center justify-between h-7 px-1.5 pl-2.5 border-b border-border-subtle text-xs text-ink-secondary shrink-0">
         <span>工作区</span>
-        <span style={{ display: 'flex' }}>
-          <button type="button" title="刷新" style={iconBtn} onClick={() => setRefreshKey((k) => k + 1)}>⟳</button>
-          <button type="button" title="折叠" style={iconBtn} onClick={onToggleCollapse}>«</button>
+        <span className="flex">
+          <button type="button" title="刷新" className="flex items-center justify-center h-6 w-6 rounded-md text-ink-faint hover:bg-surface-3 hover:text-ink" onClick={() => setRefreshKey((k) => k + 1)}><RotateCw size={13} /></button>
+          <button type="button" title="折叠" className="flex items-center justify-center h-6 w-6 rounded-md text-ink-faint hover:bg-surface-3 hover:text-ink" onClick={onToggleCollapse}><PanelLeftClose size={13} /></button>
         </span>
       </div>
       <div style={{ paddingTop: 2 }}>
         {rootChildren === null
-          ? <div style={{ color: '#999', fontSize: 12, padding: '4px 10px' }}>加载中…</div>
+          ? <div className="text-ink-faint text-xs px-2.5 py-1">加载中…</div>
           : renderList(rootChildren, 0, '')}
       </div>
       {/* 契约 4：fixed 定位于鼠标处的自定义菜单 */}
       {menu && (
         <div
           ref={menuRef}
-          style={{ position: 'fixed', left: menu.x, top: menu.y, zIndex: 1000, background: '#fff', border: '1px solid #ccc', borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,.15)', padding: '4px 0', minWidth: 120 }}
+          className="fixed z-[1000] bg-surface-2 border border-border rounded-md shadow-lg py-1 min-w-30"
+          style={{ left: menu.x, top: menu.y }}
           onContextMenu={(e) => e.preventDefault()}
         >
           {menuItem('新建文件', () => startCreate('file'))}
