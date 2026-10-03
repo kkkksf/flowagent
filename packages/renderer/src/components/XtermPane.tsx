@@ -4,17 +4,21 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { fa } from '../api/fa.js'
+import { xtermTheme } from '../themes.js'
+import { useThemeStore } from '../theme-store.js'
 
 export function XtermPane(): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = ref.current!
     let disposed = false // 卸载竞态：attach 回放到达时组件可能已清理
-    const term = new Terminal({ fontSize: 13, cursorBlink: true })
+    const term = new Terminal({ fontSize: 13, cursorBlink: true, theme: xtermTheme(useThemeStore.getState().theme) })
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(el)
     fit.fit()
+    // 全局主题切换 → 即时改写 xterm 主题（背景/前景/光标/16 色）
+    const unsubTheme = useThemeStore.subscribe((s) => { term.options.theme = xtermTheme(s.theme) })
     const off = fa.onEvent((ev) => {
       if (ev.type === 'term-data') term.write(ev.data)
     })
@@ -30,7 +34,7 @@ export function XtermPane(): React.JSX.Element {
       fit.fit(); void fa.term.resize(term.cols, term.rows)
     })
     ro.observe(el)
-    return () => { disposed = true; ro.disconnect(); off(); term.dispose() } // 仅销毁前端实例；pty 归 App/main 管理
+    return () => { disposed = true; ro.disconnect(); off(); unsubTheme(); term.dispose() } // 仅销毁前端实例；pty 归 App/main 管理
   }, [])
   return <div ref={ref} style={{ width: '100%', height: '100%' }} />
 }

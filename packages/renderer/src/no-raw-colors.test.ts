@@ -5,7 +5,7 @@ import { join } from 'node:path'
 // 尚未迁移到语义 token 的文件；每完成一个组件任务就删一行，Task 10 必须清空
 const LEGACY_FILES = new Set([
   'Composer.tsx', 'MessageItem.tsx', 'ToolCard.tsx',
-  'ApprovalCard.tsx', 'MonacoPane.tsx', 'MonacoDiff.tsx', 'TerminalPanel.tsx', 'XtermPane.tsx',
+  'ApprovalCard.tsx', 'MonacoPane.tsx', 'MonacoDiff.tsx',
 ])
 
 const HEX = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\b(?:red|blue|green|white|black|gray|grey|yellow|orange|purple|pink|cyan|magenta)\b/i
