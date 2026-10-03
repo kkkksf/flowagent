@@ -13,10 +13,12 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.3",
     "@vitejs/plugin-react": "^5.0.0",
     "electron": "^39.0.0",
     "electron-vite": "^4.0.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^7.0.0",
     "vitest": "^5.0.2"

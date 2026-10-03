@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface-0: #0e0f11;
+  --color-surface-1: #16181b;
+  --color-surface-2: #1d2023;
+  --color-surface-3: #25292d;
+  --color-border-subtle: #26292d;
+  --color-border: #33373c;
+  --color-ink: #ececf1;
+  --color-ink-secondary: #a5a9b3;
+  --color-ink-faint: #6b7078;
+  --color-accent: #7da2f7;
+  --color-accent-hover: #9db9f9;
+  --color-text-on-accent: #ffffff;
+  --color-success: #4cc38a;
+  --color-danger: #ef6b7d;
+  --color-warning: #e0a458;
+  --color-diff-added: #3fb27f;
+  --color-diff-removed: #e5617c;
+  --font-ui: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'Cascadia Code', Consolas, 'PingFang SC', 'Microsoft YaHei', monospace;
+}
+
+:root[data-theme='light'] {
+  --color-surface-0: #ffffff;
+  --color-surface-1: #f7f7f8;
+  --color-surface-2: #f0f1f2;
+  --color-surface-3: #e8e9eb;
+  --color-border-subtle: #e8e9eb;
+  --color-border: #d5d7da;
+  --color-ink: #1a1c1f;
+  --color-ink-secondary: #565b64;
+  --color-ink-faint: #8a9099;
+  --color-accent: #3358d4;
+  --color-accent-hover: #2747b8;
+  --color-text-on-accent: #ffffff;
+  --color-success: #1c7c4d;
+  --color-danger: #c03550;
+  --color-warning: #8f6a2f;
+  --color-diff-added: #1a7f4b;
+  --color-diff-removed: #b3364e;
+}
+
+/* 基础层 */
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-surface-0);
+  color: var(--color-ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 滚动条/选区/焦点环（全局细化） */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--color-surface-3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-border); }
+::-webkit-scrollbar-track { background: transparent; }
+::selection { background: color-mix(in srgb, var(--color-accent) 25%, transparent); }
+:focus-visible { outline: 2px solid color-mix(in srgb, var(--color-accent) 50%, transparent); outline-offset: -1px; }
+
+/* markdown（fa-md 挂在 assistant 文本容器上） */
+.fa-md { line-height: 1.65; }
+.fa-md > :first-child { margin-top: 0; } .fa-md > :last-child { margin-bottom: 0; }
+.fa-md p { margin: 0.5em 0; }
+.fa-md h1, .fa-md h2, .fa-md h3, .fa-md h4 { margin: 0.9em 0 0.4em; font-weight: 600; line-height: 1.3; }
+.fa-md h1 { font-size: 1.25em; } .fa-md h2 { font-size: 1.15em; } .fa-md h3 { font-size: 1.05em; }
+.fa-md ul, .fa-md ol { margin: 0.5em 0; padding-left: 1.4em; }
+.fa-md li { margin: 0.15em 0; }
+.fa-md a { color: var(--color-accent); text-decoration: underline; }
+.fa-md code {
+  font-family: var(--font-mono); font-size: 0.85em;
+  background: var(--color-surface-0); border: 1px solid var(--color-border-subtle);
+  border-radius: 4px; padding: 0.1em 0.35em;
+}
+.fa-md pre {
+  background: var(--color-surface-0); border: 1px solid var(--color-border-subtle);
+  border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 0.6em 0;
+}
+.fa-md pre code { background: none; border: none; padding: 0; font-size: 12px; }
+.fa-md table { border-collapse: collapse; margin: 0.6em 0; }
+.fa-md th, .fa-md td { border: 1px solid var(--color-border-subtle); padding: 4px 10px; }
+.fa-md blockquote { margin: 0.6em 0; padding-left: 0.8em; border-left: 2px solid var(--color-border); color: var(--color-ink-secondary); }
+
+/* 运行呼吸点（.fa-dots 容器内三个 .fa-dot，Task 8 使用） */
+@keyframes fa-breathe { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+.fa-dot { width: 4px; height: 4px; border-radius: 9999px; background: var(--color-ink-secondary); animation: fa-breathe 1.5s infinite ease-in-out; }
+.fa-dot:nth-child(2) { animation-delay: 0.2s; }
+.fa-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* 文件树菜单 hover（从组件 <style> 注入迁移至此） */
+.fa-tree-row:hover, .fa-sess-row:hover { background: var(--color-surface-3); }
+.fa-sess-del { opacity: 0; } .fa-sess-row:hover .fa-sess-del { opacity: 1; }
+
+/* lucide 图标默认尺寸对齐 */
+svg.lucide { width: 14px; height: 14px; }
