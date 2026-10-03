@@ -78,7 +78,13 @@ app.whenReady().then(() => {
     onChunk: (d) => emit({ type: 'term-data', data: d }),
     onExit: () => emit({ type: 'term-exit' }),
   })
-  term.start(workspaceRoot!)
+  try {
+    term.start(workspaceRoot!)
+  } catch (e) {
+    // pty 启动失败绝不能拖垮 whenReady 后半段（IPC 注册/会话恢复）——终端降级为"已退出"，其余功能照常
+    console.error('terminal failed to start:', e)
+    emit({ type: 'error', message: `终端启动失败：${e instanceof Error ? e.message : String(e)}` })
+  }
 
   const historyOf = (file: string) => repairDanglingToolCalls(
     new JsonlSessionStore(join(sessionsDir, file)).load().flatMap((r) => (r.kind === 'message' ? [r.message] : [])))
