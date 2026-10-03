@@ -194,7 +194,7 @@ export function FileTree({ onOpenFile = openFileFromDisk, collapsed, onToggleCol
       rows.push(
         <div key={node.path}>
           <div
-            className="fa-tree-row flex items-center h-[26px] cursor-pointer select-none truncate text-[13px] hover:bg-surface-3"
+            className="fa-tree-row flex items-center h-[26px] cursor-pointer select-none overflow-hidden text-[13px] hover:bg-surface-3"
             style={{ paddingLeft: 4 + depth * 16 }}
             onClick={() => (node.isDir ? onDirClick(node) : onOpenFile(node.path))}
             onContextMenu={(e) => {
@@ -212,7 +212,7 @@ export function FileTree({ onOpenFile = openFileFromDisk, collapsed, onToggleCol
             ) : (
               <File size={14} className="ml-[18px] shrink-0 mr-1 text-ink-faint" />
             )}
-            {node.name}
+            <span className="min-w-0 truncate">{node.name}</span>
             {/* 契约 8：agentTouched 路径节点名旁小圆点 */}
             {agentTouched.includes(node.path) && <span className="ml-1 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />}
           </div>
