@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 // 尚未迁移到语义 token 的文件；每完成一个组件任务就删一行，Task 10 必须清空
 const LEGACY_FILES = new Set([
-  'App.tsx', 'ChatPanel.tsx', 'Composer.tsx', 'MessageItem.tsx', 'ToolCard.tsx',
+  'Composer.tsx', 'MessageItem.tsx', 'ToolCard.tsx',
   'ApprovalCard.tsx', 'DiffPane.tsx', 'EditorArea.tsx', 'FileTree.tsx',
   'MonacoPane.tsx', 'MonacoDiff.tsx', 'TerminalPanel.tsx', 'XtermPane.tsx',
 ])
