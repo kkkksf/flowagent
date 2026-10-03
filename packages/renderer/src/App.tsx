@@ -48,6 +48,8 @@ export function App(): React.JSX.Element {
         >
           {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
         </button>
+        {/* overlay 原生窗口控制按钮占位：titleBarStyle hidden 后 Windows 右上角 min/max/close 由 overlay 绘制，web 内容需让位（Task 4 重排时保留同等间距） */}
+        <div className="w-[140px] shrink-0" />
       </header>
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         <div style={{ width: treeCollapsed ? 32 : 240, borderRight: '1px solid #ddd', overflowY: 'auto', flexShrink: 0, transition: 'width 0.15s' }}>

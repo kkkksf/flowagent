@@ -43,6 +43,8 @@ app.whenReady().then(() => {
 
   const win = new BrowserWindow({
     width: 1200, height: 800,
+    // Windows 上 titleBarOverlay 必须搭配 titleBarStyle: 'hidden' 才实际生效（overlay 才会绘制并支持 setTitleBarOverlay 动态更新）
+    titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#0e0f11', symbolColor: '#ececf1', height: 40 },
     webPreferences: { preload: join(__dirname, '../preload/preload.js'), contextIsolation: true, nodeIntegration: false },
   })

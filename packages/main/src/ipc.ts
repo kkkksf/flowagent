@@ -41,8 +41,11 @@ export function registerIpc(deps: {
   ipcMain.handle('fa:setAutoApprove', (_e, v: unknown) => { deps.host.setAutoApprove(Boolean(v)) })
   ipcMain.handle('fa:chrome:set-theme', (_e, c: unknown) => {
     const v = c as { color?: unknown; symbolColor?: unknown }
+    // 校验式 no-op：非法 payload 直接丢弃，不设兜底 hex（色板 hex 白名单只允许 themes.ts/index.css/BrowserWindow 初值）。
+    // 渲染端正常路径永远发送 chromeColors() 产物，此防御分支仅拦异常调用。
+    if (typeof v?.color !== 'string' || !v.color || typeof v?.symbolColor !== 'string' || !v.symbolColor) return
     try {
-      deps.win.setTitleBarOverlay({ color: String(v?.color ?? '#0e0f11'), symbolColor: String(v?.symbolColor ?? '#ececf1') })
+      deps.win.setTitleBarOverlay({ color: v.color, symbolColor: v.symbolColor })
     } catch { /* 平台不支持/窗口销毁：静默（spec §7） */ }
   })
   ipcMain.handle('fa:fs:read', (_e, p: unknown) => deps.fs.read(String(p)))
