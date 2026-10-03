@@ -24,7 +24,10 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>((set) => ({
   theme: 'dark',
   init: () => {
-    const t = resolveStoredTheme(typeof localStorage === 'undefined' ? null : localStorage.getItem(THEME_STORAGE_KEY))
+    // 与 applyTheme 内 setItem 同款 try/catch：隐私模式抛错或无 localStorage（测试环境）时兜底 null → dark
+    let raw: string | null = null
+    try { raw = localStorage.getItem(THEME_STORAGE_KEY) } catch { /* 隐私模式等 */ }
+    const t = resolveStoredTheme(raw)
     set({ theme: t }); applyTheme(t)
   },
   setTheme: (t) => { set({ theme: t }); applyTheme(t) },

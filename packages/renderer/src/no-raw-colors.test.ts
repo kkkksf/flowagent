@@ -5,10 +5,11 @@ import { join } from 'node:path'
 // 所有 .tsx 已迁移到语义 token：allowlist 为空，守卫扫描全部组件
 const LEGACY_FILES = new Set<string>([])
 
-const HEX = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\b(?:red|blue|green|white|black|gray|grey|yellow|orange|purple|pink|cyan|magenta)\b/i
+const HEX = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\b(?:red|blue|green|white|black|gray|grey|yellow|orange|purple|pink|cyan|magenta|slate|zinc|rose|emerald|indigo|teal|amber|violet|stone|neutral|lime|sky|fuchsia)\b/i
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {
+    if (n === 'node_modules' || n === 'dist') return []
     const p = join(dir, n)
     return statSync(p).isDirectory() ? walk(p) : [p]
   })

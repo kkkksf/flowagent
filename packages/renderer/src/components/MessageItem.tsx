@@ -19,7 +19,7 @@ export function MessageItem({ item }: { item: ChatItem }): React.JSX.Element {
       <div className="fa-md max-w-[90%]"><ReactMarkdown>{item.text}</ReactMarkdown></div>
       {item.tools.map((t) => <ToolCard key={t.id} card={t} path={t.path} onOpenPath={(p) => void openFileFromDisk(p)} />)}
       {/* 模型名尾行（有文本时）：Codex 风格的来源标注 */}
-      {item.text && <div className="mt-1 text-xs text-ink-faint">{model}</div>}
+      {item.text && model && <div className="mt-1 text-xs text-ink-faint">{model}</div>}
     </div>
   )
   if (item.kind === 'approval') return <ApprovalCard item={item} />

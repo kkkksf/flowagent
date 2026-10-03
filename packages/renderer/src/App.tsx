@@ -13,7 +13,7 @@ import { EditorArea } from './components/EditorArea.js'
 import { TerminalPanel } from './components/TerminalPanel.js'
 import type { SessionMeta } from '../../main/src/protocol.js'
 
-export function fmtAgo(mtimeMs: number): string {
+function fmtAgo(mtimeMs: number): string {
   const s = Math.floor((Date.now() - mtimeMs) / 1000)
   if (s < 60) return '刚刚'
   if (s < 3600) return `${Math.floor(s / 60)} 分钟前`
