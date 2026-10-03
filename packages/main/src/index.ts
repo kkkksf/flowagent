@@ -46,6 +46,7 @@ app.whenReady().then(() => {
     // Windows 上 titleBarOverlay 必须搭配 titleBarStyle: 'hidden' 才实际生效（overlay 才会绘制并支持 setTitleBarOverlay 动态更新）
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#0e0f11', symbolColor: '#ececf1', height: 40 },
+    backgroundColor: '#0e0f11', // 首帧底色对齐默认暗色 surface-0，消除启动白闪（浅色主题随后由 CSS 覆盖）
     webPreferences: { preload: join(__dirname, '../preload/preload.js'), contextIsolation: true, nodeIntegration: false },
   })
   const url = process.env['ELECTRON_RENDERER_URL']

@@ -79,7 +79,7 @@ function SessionPicker(): React.JSX.Element {
   return (
     <div
       ref={ddRef}
-      className="relative"
+      className="relative [-webkit-app-region:no-drag]"
       onClick={() => { if (!running) setOpen((v) => !v) }}
       title={running ? '运行中不可切换' : undefined}
     >
@@ -145,7 +145,9 @@ export function App(): React.JSX.Element {
   }, [])
   return (
     <div className="flex flex-col h-screen">
-      <header className="flex items-center gap-3 h-10 px-3 border-b border-border-subtle shrink-0">
+      {/* titleBarStyle hidden 后 header 即窗口拖拽区（交互元素各自 no-drag）；右缘 pr 用 env(titlebar-area-*)
+          让位 overlay 原生 min/max/close——非 overlay 环境两段 env 均兜底 100vw，calc 为负值按初始值 0 处理 */}
+      <header className="flex items-center gap-3 h-10 px-3 pr-[calc(100vw_-_env(titlebar-area-x,100vw)_-_env(titlebar-area-width,100vw))] border-b border-border-subtle shrink-0 [-webkit-app-region:drag]">
         <div className="w-4 h-4 rounded bg-accent shrink-0" />
         <strong className="text-[13px]">FlowAgent</strong>
         <SessionPicker />
@@ -162,12 +164,10 @@ export function App(): React.JSX.Element {
           type="button"
           title="切换主题"
           onClick={() => useThemeStore.getState().setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="h-6 w-6 flex items-center justify-center rounded-md text-ink-secondary hover:bg-surface-3 hover:text-ink transition-colors duration-150"
+          className="h-6 w-6 flex items-center justify-center rounded-md text-ink-secondary hover:bg-surface-3 hover:text-ink transition-colors duration-150 [-webkit-app-region:no-drag]"
         >
           {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
         </button>
-        {/* overlay 原生窗口控制按钮占位：titleBarStyle hidden 后 Windows 右上角 min/max/close 由 overlay 绘制，web 内容需让位（Task 2 裁定：保留同等 140px 右缘占位） */}
-        <div className="w-[140px] shrink-0" />
       </header>
       <div className="flex flex-1 min-h-0">
         <div className={`${treeCollapsed ? 'w-8' : 'w-60'} border-r border-border-subtle overflow-y-auto shrink-0 transition-all duration-150`}>
