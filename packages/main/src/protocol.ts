@@ -47,5 +47,7 @@ export interface FaApi {
   term: { write(d: string): Promise<void>; resize(c: number, r: number): Promise<void>; attach(c: number, r: number): Promise<string>; restart(): Promise<void> }
   // 'new' 必须加引号：类型字面量里裸 new() 是构造签名而非方法名，fa.session.new 会类型不可达
   session: { list(): Promise<SessionMeta[]>; 'new'(): Promise<SessionMeta>; switch(file: string): Promise<void>; delete(file: string): Promise<SessionMeta[]> }
+  // 标题栏 overlay 配色（M5 主题联动）：hex 由 renderer 的 themes.ts 单一事实源提供
+  chrome: { setTheme(c: { color: string; symbolColor: string }): Promise<void> }
   onEvent(cb: (ev: FaEvent) => void): () => void
 }

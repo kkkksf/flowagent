@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('fa', {
     switch: (file: string) => ipcRenderer.invoke('fa:session:switch', file),
     delete: (file: string) => ipcRenderer.invoke('fa:session:delete', file),
   },
+  chrome: {
+    setTheme: (c: { color: string; symbolColor: string }) => ipcRenderer.invoke('fa:chrome:set-theme', c),
+  },
   onEvent: (cb: (ev: FaEvent) => void) => {
     const listener = (_e: unknown, ev: FaEvent) => cb(ev)
     ipcRenderer.on('fa:event', listener)

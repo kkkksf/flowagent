@@ -43,6 +43,7 @@ app.whenReady().then(() => {
 
   const win = new BrowserWindow({
     width: 1200, height: 800,
+    titleBarOverlay: { color: '#0e0f11', symbolColor: '#ececf1', height: 40 },
     webPreferences: { preload: join(__dirname, '../preload/preload.js'), contextIsolation: true, nodeIntegration: false },
   })
   const url = process.env['ELECTRON_RENDERER_URL']

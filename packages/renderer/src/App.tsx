@@ -1,7 +1,9 @@
 import type React from 'react'
 import { useEffect, useState } from 'react'
+import { Sun, Moon } from 'lucide-react'
 import { fa } from './api/fa.js'
 import { useStore } from './store.js'
+import { useThemeStore } from './theme-store.js'
 import { useEditorStore } from './editor-store-instance.js'
 import { applyEditorEvent, openFileFromDisk } from './editor-events.js'
 import { ChatPanel, fmtTokens } from './components/ChatPanel.js'
@@ -17,6 +19,7 @@ export function App(): React.JSX.Element {
   const [treeCollapsed, setTreeCollapsed] = useState(false)
   // 终端面板折叠只卸载 XtermPane 前端实例，pty 归 main 管理继续后台跑
   const [termCollapsed, setTermCollapsed] = useState(false)
+  const theme = useThemeStore((s) => s.theme)
   useEffect(() => {
     // 先订阅再 ready：保证能收到主进程 ready 后补发的恢复历史；chat/editor 两个 store 并行喂
     const off = fa.onEvent((ev) => { useStore.getState().applyEvent(ev); void applyEditorEvent(ev) })
@@ -36,6 +39,15 @@ export function App(): React.JSX.Element {
         <span style={{ color: '#999' }} title="prompt / completion tokens">
           {usage ? `${fmtTokens(usage.prompt)} / ${fmtTokens(usage.completion)} tokens` : '—'}
         </span>
+        {/* 临时主题切换按钮（Task 4 重排 header 时保留） */}
+        <button
+          type="button"
+          title="切换主题"
+          onClick={() => useThemeStore.getState().setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="ml-auto h-6 w-6 flex items-center justify-center rounded-md text-ink-secondary hover:bg-surface-3 hover:text-ink"
+        >
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+        </button>
       </header>
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         <div style={{ width: treeCollapsed ? 32 : 240, borderRight: '1px solid #ddd', overflowY: 'auto', flexShrink: 0, transition: 'width 0.15s' }}>
