@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-// 尚未迁移到语义 token 的文件；每完成一个组件任务就删一行，Task 10 必须清空
-const LEGACY_FILES = new Set([
-  'MonacoPane.tsx', 'MonacoDiff.tsx',
-])
+// 所有 .tsx 已迁移到语义 token：allowlist 为空，守卫扫描全部组件
+const LEGACY_FILES = new Set<string>([])
 
 const HEX = /#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\b(?:red|blue|green|white|black|gray|grey|yellow|orange|purple|pink|cyan|magenta)\b/i
 

@@ -6,6 +6,8 @@ import type React from 'react'
 import { useEffect, useRef } from 'react'
 import { fa } from '../api/fa.js'
 import { useEditorStore } from '../editor-store-instance.js'
+import { useThemeStore } from '../theme-store.js'
+import { monacoThemeData } from '../themes.js'
 
 // 本地 worker：语法高亮基础能力零外链（spec §2：禁 CDN）
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() }
@@ -17,7 +19,10 @@ export function MonacoPane(): React.JSX.Element {
   const activeFile = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId))
 
   useEffect(() => {
-    const editor = monaco.editor.create(ref.current!, { automaticLayout: true, theme: 'vs' })
+    // fa-dark/fa-light 取自 PALETTES，与全局主题联动（defineTheme 幂等，可重复调用）
+    monaco.editor.defineTheme('fa-dark', monacoThemeData('dark'))
+    monaco.editor.defineTheme('fa-light', monacoThemeData('light'))
+    const editor = monaco.editor.create(ref.current!, { automaticLayout: true, theme: useThemeStore.getState().theme === 'dark' ? 'fa-dark' : 'fa-light' })
     editorRef.current = editor
     editor.onDidChangeModelContent(() => {
       const s = useEditorStore.getState()
@@ -26,7 +31,10 @@ export function MonacoPane(): React.JSX.Element {
       // 值与 store 一致的变化来自外部 reload 的 setValue（watch/agent 联动），不算用户编辑、不标脏
       if (id && t?.kind === 'file' && t.content !== editor.getValue()) s.updateContent(id, editor.getValue())
     })
-    return () => editor.dispose()
+    const unsubTheme = useThemeStore.subscribe((s) => {
+      monaco.editor.setTheme(s.theme === 'dark' ? 'fa-dark' : 'fa-light')
+    })
+    return () => { unsubTheme(); editor.dispose() }
   }, [])
 
   useEffect(() => { // 激活/内容变化 → 绑定对应 model（仅 file 标签；每 path 一个 model，切标签复用）
