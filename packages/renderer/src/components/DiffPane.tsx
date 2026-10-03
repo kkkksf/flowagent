@@ -11,7 +11,7 @@ export function DiffPane({ tab }: { tab: DiffTab }): React.JSX.Element {
       <div className="flex items-center gap-2 px-2.5 h-9 border-b border-border-subtle">
         <strong className="font-mono text-xs font-semibold">{tab.path}</strong>
         {tab.resolved === null ? (<>
-          <button className="h-6 px-2.5 rounded-md bg-accent text-text-on-accent text-xs hover:bg-accent-hover" onClick={() => requestApproval(tab.approvalId, true, tab.path)}>✓ 允许</button>
+          <button className="h-6 px-2.5 rounded-md bg-accent text-on-accent text-xs hover:bg-accent-hover" onClick={() => requestApproval(tab.approvalId, true, tab.path)}>✓ 允许</button>
           <button className="h-6 px-2.5 rounded-md border border-danger text-danger text-xs hover:bg-surface-3" onClick={() => requestApproval(tab.approvalId, false)}>✗ 拒绝</button>
           <button className="h-6 px-2.5 rounded-md border border-border text-xs hover:bg-surface-3" onClick={() => { if (requestApproval(tab.approvalId, true, tab.path)) void fa.setAutoApprove(true) }}>✓ 允许且本会话不再询问</button>
         </>) : <span className="text-xs text-ink-secondary">已{tab.resolved === 'allowed' ? '允许' : '拒绝'}</span>}

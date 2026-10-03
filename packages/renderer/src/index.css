@@ -12,7 +12,7 @@
   --color-ink-faint: #6b7078;
   --color-accent: #7da2f7;
   --color-accent-hover: #9db9f9;
-  --color-text-on-accent: #ffffff;
+  --color-on-accent: #ffffff;
   --color-success: #4cc38a;
   --color-danger: #ef6b7d;
   --color-warning: #e0a458;
@@ -34,7 +34,7 @@
   --color-ink-faint: #8a9099;
   --color-accent: #3358d4;
   --color-accent-hover: #2747b8;
-  --color-text-on-accent: #ffffff;
+  --color-on-accent: #ffffff;
   --color-success: #1c7c4d;
   --color-danger: #c03550;
   --color-warning: #8f6a2f;
